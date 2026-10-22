@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Wajib HTTPS/TLS penuh untuk seluruh koneksi publik (Saweria, SociaBuzz, API) -->
+    <base-config cleartextTrafficPermitted="false" />
+
+    <!-- Izinkan WS/HTTP lokal hanya untuk relay LAN internal (TikFinity Desktop / Local Dev) -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

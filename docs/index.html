@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DiStream Studio v3.0 — Creator Broadcast &amp; SaaS Platform</title>
+  <style>
+    :root[data-theme="dark"] {
+      --page-bg: #0f1115;
+      --app-bg: #15181e;
+      --surface-1: #1d2028;
+      --surface-2: #262a34;
+      --surface-hover: #2f3440;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-strong: rgba(255, 255, 255, 0.15);
+      --text-primary: #f4f6fa;
+      --text-secondary: #9ba3b2;
+      --text-muted: #6b7280;
+      --shadow-phone: 0 28px 70px rgba(0, 0, 0, 0.55);
+      --stage-backdrop: #101217;
+    }
+
+    :root[data-theme="light"] {
+      --page-bg: #e9edf3;
+      --app-bg: #f4f6fa;
+      --surface-1: #ffffff;
+      --surface-2: #eef1f6;
+      --surface-hover: #e3e7ef;
+      --border: rgba(15, 23, 42, 0.08);
+      --border-strong: rgba(15, 23, 42, 0.16);
+      --text-primary: #111827;
+      --text-secondary: #4b5563;
+      --text-muted: #6b7280;
+      --shadow-phone: 0 24px 60px rgba(15, 23, 42, 0.14);
+      --stage-backdrop: #dfe4ec;
+    }
+
+    :root {
+      --brand: #2563eb;
+      --brand-hover: #1d4ed8;
+      --brand-soft: rgba(37, 99, 235, 0.14);
+      --vip-gold: #d97706;
+      --vip-gold-soft: rgba(217, 119, 6, 0.16);
+      --live-red: #ef4444;
+      --live-red-soft: rgba(239, 68, 68, 0.14);
+      --good-green: #10b981;
+      --warn-amber: #f59e0b;
+      --overlay-accent: #2563eb;
+      --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+      --radius-lg: 16px;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--page-bg);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 28px;
+      padding: 24px;
+      transition: background 0.3s var(--ease-spring), color 0.3s var(--ease-spring);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    svg {
+      width: 17px;
+      height: 17px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+    }
+
+    button {
+      font-family: inherit;
+      cursor: pointer;
+      transition: transform 0.16s var(--ease-spring), background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    }
+    button:active { transform: scale(0.96); }
+
+    .phone-frame {
+      width: 428px;
+      height: 884px;
+      background: var(--app-bg);
+      border: 1px solid var(--border-strong);
+      border-radius: 34px;
+      box-shadow: var(--shadow-phone);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex-shrink: 0;
+      position: relative;
+      transition: background 0.3s var(--ease-spring);
+    }
+
+    .app-header {
+      padding: 13px 16px;
+      background: var(--surface-1);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand-group { display: flex; align-items: center; gap: 10px; }
+    .brand-logo {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.28);
+    }
+    .brand-title-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .brand-name { font-size: 15px; font-weight: 700; letter-spacing: -0.02em; }
+
+    .tier-pill {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--brand-soft);
+      color: var(--brand);
+      border: 1px solid rgba(37, 99, 235, 0.3);
+      cursor: pointer;
+    }
+    .tier-pill.pro {
+      background: var(--vip-gold-soft);
+      color: var(--vip-gold);
+      border-color: rgba(217, 119, 6, 0.45);
+    }
+
+    .status-chip {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--text-secondary);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .status-chip.live { background: var(--live-red); color: #ffffff; }
+    .live-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .status-chip.live .live-dot { animation: softPulse 1.4s infinite; }
+    @keyframes softPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .telemetry-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+    .header-actions { display: flex; align-items: center; gap: 6px; }
+    .icon-btn {
+      width: 33px; height: 33px; border-radius: 9px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      color: var(--text-secondary); display: flex; align-items: center; justify-content: center;
+    }
+    .icon-btn:hover { background: var(--surface-hover); color: var(--text-primary); }
+    .icon-btn.active { background: var(--brand-soft); color: var(--brand); border-color: rgba(37,99,235,0.35); }
+    .icon-btn.warn { background: rgba(245, 158, 11, 0.16); color: var(--warn-amber); border-color: rgba(245,158,11,0.4); }
+
+    /* Live Canvas Stage */
+    .stage-container {
+      height: 214px;
+      background: var(--stage-backdrop);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 14px;
+      position: relative;
+    }
+
+    .canvas-viewport {
+      height: 100%;
+      aspect-ratio: 9 / 16;
+      background: #141926;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+      transition: aspect-ratio 0.35s var(--ease-spring), width 0.35s var(--ease-spring);
+      cursor: pointer;
+      user-select: none;
+    }
+    .canvas-viewport.landscape { height: auto; width: 92%; aspect-ratio: 16 / 9; }
+
+    .scene-visual {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 12px; color: #ffffff;
+    }
+    .scene-gameplay { background: radial-gradient(circle at 30% 25%, #233862 0%, #162036 55%, #0e1320 100%); }
+    .scene-starting { background: linear-gradient(155deg, #1b2845 0%, #141720 100%); }
+    .scene-brb { background: linear-gradient(155deg, #2d261e 0%, #16171d 100%); }
+    .scene-camera { background: radial-gradient(circle at 50% 35%, #1e352f 0%, #121820 100%); }
+    .scene-privacy { background: #111318; }
+
+    .scene-label-main { font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.9); }
+    .scene-label-sub { font-size: 9px; color: rgba(255, 255, 255, 0.55); margin-top: 2px; }
+
+    .ov-card {
+      background: rgba(20, 23, 30, 0.84);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: #f9fafb;
+      transition: all 0.25s var(--ease-spring);
+    }
+    .canvas-viewport[data-frame="light"] .ov-card {
+      background: rgba(255, 255, 255, 0.92);
+      border-color: rgba(15, 23, 42, 0.14);
+      color: #111827;
+    }
+    .canvas-viewport[data-frame="gold"] .ov-card {
+      background: rgba(24, 20, 12, 0.88);
+      border-color: rgba(245, 158, 11, 0.55);
+      color: #fef3c7;
+    }
+
+    .ov-watermark {
+      position: absolute; top: 6px; right: 6px;
+      padding: 2px 6px; border-radius: 99px;
+      font-size: 6.8px; font-weight: 700; z-index: 6;
+    }
+
+    .ov-goal {
+      position: absolute; top: 24px; left: 7px; right: 7px;
+      padding: 4px 6px; border-radius: 7px; font-size: 7px; font-weight: 600; z-index: 4;
+    }
+    .ov-goal-head { display: flex; justify-content: space-between; margin-bottom: 2px; }
+    .ov-goal-track { height: 4px; background: rgba(128,128,128,0.28); border-radius: 99px; overflow: hidden; }
+    .ov-goal-fill { height: 100%; width: 35%; background: var(--overlay-accent); transition: width 0.35s var(--ease-spring); }
+
+    .ov-love-pill {
+      position: absolute; top: 53px; right: 7px;
+      padding: 4px 7px; border-radius: 8px;
+      display: flex; align-items: center; gap: 4px;
+      font-size: 7px; font-weight: 700; z-index: 5;
+    }
+    .heart-icon-svg { width: 11px; height: 11px; fill: #ef4444; stroke: none; animation: heartBeat 1.3s ease-in-out infinite; }
+    @keyframes heartBeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.22); } }
+
+    .floating-heart {
+      position: absolute; bottom: 28px; right: 16px;
+      width: 14px; height: 14px; pointer-events: none; z-index: 12;
+      animation: floatUp 1.15s var(--ease-spring) forwards;
+    }
+    @keyframes floatUp {
+      0% { opacity: 0.95; transform: translateY(0) scale(0.75); }
+      100% { opacity: 0; transform: translateY(-95px) translateX(-10px) scale(1.25); }
+    }
+
+    .ov-custom-text {
+      position: absolute; z-index: 6; font-size: 7.5px; font-weight: 700;
+      padding: 3px 6px; border-radius: 6px; white-space: nowrap; max-width: 90%; overflow: hidden;
+    }
+
+    .ov-alert-card {
+      position: absolute; left: 8px; right: 8px; top: 40%;
+      padding: 7px 8px; border-radius: 9px; border: 1.5px solid var(--overlay-accent);
+      text-align: center; z-index: 10; opacity: 0; transform: translateY(-8px) scale(0.94);
+      pointer-events: none; box-shadow: 0 10px 24px rgba(0,0,0,0.45);
+      transition: all 0.28s var(--ease-spring);
+    }
+    .ov-alert-card.visible { opacity: 1; transform: translateY(0) scale(1); }
+
+    .ov-ticker {
+      position: absolute; left: 6px; right: 6px; bottom: 5px; height: 15px;
+      border-radius: 5px; padding: 0 6px; display: flex; align-items: center;
+      overflow: hidden; font-size: 7px; font-weight: 600; white-space: nowrap; z-index: 4;
+    }
+    .ov-ticker span { display: inline-block; padding-left: 100%; animation: tickerMove 12s linear infinite; }
+    @keyframes tickerMove { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+
+    .ov-safezone {
+      position: absolute; left: 0; bottom: 0; width: 75%; height: 28%;
+      background: rgba(245, 158, 11, 0.14); border-top: 1px dashed #f59e0b; border-right: 1px dashed #f59e0b;
+      padding: 3px 5px; font-size: 6.5px; font-weight: 700; color: #fde68a; display: none; z-index: 8;
+    }
+
+    .stage-helper-pill {
+      position: absolute; right: 12px; bottom: 10px;
+      background: var(--surface-1); border: 1px solid var(--border);
+      border-radius: 8px; padding: 4px 8px; font-size: 10px; color: var(--text-secondary);
+    }
+
+    .scene-strip {
+      display: flex; gap: 6px; padding: 9px 14px;
+      background: var(--surface-1); border-bottom: 1px solid var(--border);
+      overflow-x: auto; scrollbar-width: none;
+    }
+    .scene-strip::-webkit-scrollbar { display: none; }
+    .scene-btn {
+      padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border);
+      background: var(--surface-2); color: var(--text-secondary);
+      font-size: 11px; font-weight: 600; white-space: nowrap;
+    }
+    .scene-btn.active { background: var(--brand); border-color: var(--brand); color: #ffffff; }
+
+    .tab-scroll { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+    .tab-pane { display: none; flex-direction: column; gap: 12px; animation: fadeSlideUp 0.24s var(--ease-spring); }
+    .tab-pane.active { display: flex; }
+    @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    .card {
+      background: var(--surface-1); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 13px;
+    }
+    .card-title {
+      font-size: 13px; font-weight: 700; color: var(--text-primary);
+      margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-badge {
+      font-size: 10px; font-weight: 700; color: var(--brand);
+      background: var(--brand-soft); padding: 2px 8px; border-radius: 999px;
+    }
+    .card-badge.gold { color: var(--vip-gold); background: var(--vip-gold-soft); }
+
+    .plan-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border-strong);
+      border-radius: 13px;
+      padding: 12px;
+      margin-bottom: 8px;
+      position: relative;
+      transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+    .plan-card.popular {
+      border: 1.5px solid var(--brand);
+      box-shadow: 0 8px 22px rgba(37, 99, 235, 0.16);
+    }
+    .plan-card.active-tier {
+      border: 1.5px solid var(--good-green);
+    }
+
+    .stat-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 8px; }
+    .stat-mini {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 8px 9px;
+    }
+
+    .chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip {
+      padding: 6px 11px; border-radius: 9px; border: 1px solid var(--border);
+      background: var(--surface-2); color: var(--text-secondary); font-size: 11px; font-weight: 600;
+    }
+    .chip.active { background: var(--brand); border-color: var(--brand); color: #ffffff; }
+
+    .field-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px; display: block; }
+    .input-box {
+      width: 100%; background: var(--surface-2); border: 1px solid var(--border-strong);
+      border-radius: 10px; padding: 8px 11px; color: var(--text-primary);
+      font-family: inherit; font-size: 12px; outline: none;
+    }
+    .input-box:focus { border-color: var(--brand); }
+
+    .btn-primary {
+      background: var(--brand); border: none; color: #ffffff;
+      border-radius: 10px; padding: 8px 13px; font-size: 11.5px; font-weight: 600;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn-primary:hover { background: var(--brand-hover); }
+    .btn-secondary {
+      background: var(--surface-2); border: 1px solid var(--border-strong); color: var(--text-primary);
+      border-radius: 10px; padding: 8px 11px; font-size: 11px; font-weight: 600;
+      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+    }
+
+    .sfx-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .sfx-pad {
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px;
+      padding: 11px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+      color: var(--text-primary); position: relative;
+    }
+    .sfx-pad.locked { opacity: 0.72; }
+    .sfx-pad.playing { background: var(--brand); border-color: var(--brand); color: #ffffff; transform: scale(0.95); }
+    .sfx-pad.censor.playing { background: var(--live-red); border-color: var(--live-red); }
+    .sfx-pad-label { font-size: 10px; font-weight: 600; text-align: center; }
+
+    .vu-strip { display: grid; grid-template-columns: repeat(22, 1fr); gap: 3px; margin: 7px 0; }
+    .vu-seg { height: 7px; border-radius: 99px; background: var(--surface-2); transition: background 0.08s ease; }
+    input[type="range"] { width: 100%; accent-color: var(--brand); cursor: pointer; }
+
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; }
+    .layer-info-title { font-size: 12px; font-weight: 600; }
+    .layer-info-sub { font-size: 10.5px; color: var(--text-secondary); margin-top: 1px; }
+
+    .switch-pill {
+      width: 40px; height: 22px; border-radius: 999px;
+      background: var(--surface-2); border: 1px solid var(--border-strong);
+      position: relative; flex-shrink: 0; transition: background 0.22s var(--ease-spring);
+    }
+    .switch-pill::after {
+      content: ""; position: absolute; top: 2px; left: 2px;
+      width: 16px; height: 16px; border-radius: 50%; background: #ffffff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3); transition: transform 0.22s var(--ease-spring);
+    }
+    .switch-pill.on { background: var(--brand); border-color: var(--brand); }
+    .switch-pill.on::after { transform: translateX(18px); }
+
+    .bottom-dock { background: var(--surface-1); border-top: 1px solid var(--border); }
+    .go-live-bar { display: flex; gap: 8px; padding: 9px 14px; }
+    .square-action {
+      width: 44px; height: 44px; border-radius: 12px; background: var(--surface-2);
+      border: 1px solid var(--border-strong); color: var(--text-primary);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .square-action.muted, .square-action.recording {
+      background: var(--live-red-soft); border-color: var(--live-red); color: var(--live-red);
+    }
+    .main-stream-btn {
+      flex: 1; height: 44px; border-radius: 12px; border: none;
+      background: var(--brand); color: #ffffff; font-size: 13.5px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+    }
+    .main-stream-btn.live { background: var(--live-red); }
+
+    .nav-bar { display: grid; grid-template-columns: repeat(5, 1fr); padding: 4px 6px 9px; border-top: 1px solid var(--border); }
+    .nav-item {
+      background: transparent; border: none; color: var(--text-secondary);
+      padding: 6px 2px; border-radius: 10px; display: flex; flex-direction: column;
+      align-items: center; gap: 3px; font-size: 10px; font-weight: 600;
+    }
+    .nav-item.active { color: var(--brand); background: var(--brand-soft); }
+
+    /* Modals (QRIS Pakasir & PIN Security) */
+    .modal-backdrop {
+      position: absolute; inset: 0; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(5px);
+      display: none; align-items: center; justify-content: center; padding: 20px; z-index: 40;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-box {
+      width: 100%; background: var(--surface-1); border: 1px solid var(--border-strong);
+      border-radius: 18px; padding: 18px; box-shadow: 0 20px 50px rgba(0,0,0,0.45);
+      animation: fadeSlideUp 0.2s var(--ease-spring);
+    }
+
+    .side-showcase { width: 396px; display: flex; flex-direction: column; gap: 18px; }
+    @media (max-width: 880px) {
+      body { flex-direction: column; align-items: center; }
+      .side-showcase { width: 428px; }
+    }
+    .ingame-mockup {
+      height: 310px; border-radius: 22px;
+      background: linear-gradient(145deg, #1b2842 0%, #121726 100%);
+      border: 1px solid var(--border-strong); position: relative; overflow: hidden;
+      padding: 16px; box-shadow: var(--shadow-phone);
+    }
+    .floating-bar {
+      position: relative; display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(20, 22, 28, 0.9); backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 12px;
+      padding: 7px 11px; color: #f9fafb; cursor: grab; user-select: none;
+    }
+    .f-pill {
+      background: #282d38; border: 1px solid rgba(255,255,255,0.12);
+      color: #f9fafb; border-radius: 8px; padding: 4px 8px; font-size: 10px; font-weight: 600;
+    }
+    .f-pill:hover { background: var(--brand); }
+    .f-pill.stop { background: #ef4444; border-color: #ef4444; }
+  </style>
+</head>
+<body>
+
+  <div class="phone-frame">
+
+    <!-- QRIS PAKASIR CHECKOUT MODAL -->
+    <div id="qrisModal" class="modal-backdrop">
+      <div class="modal-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:15px;font-weight:700;" id="qrisPlanTitle">Checkout QRIS Pakasir</span>
+          <span class="card-badge gold">Otomatis</span>
+        </div>
+        <div id="qrisSummaryText" style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;"></div>
+
+        <!-- Clean Generated QRIS Code Card -->
+        <div style="background:#ffffff;border-radius:12px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:12px;color:#111827;">
+          <div style="font-size:11px;font-weight:800;letter-spacing:0.04em;">QRIS — GO-PAY / OVO / DANA / BCA / BRI</div>
+          <svg id="qrisMatrixSvg" viewBox="0 0 120 120" style="width:136px;height:136px;stroke:none;fill:#111827;"></svg>
+          <div id="qrisOrderIdLabel" style="font-size:10px;color:#4b5563;font-family:monospace;">ORDER: DST-MONTHLY-994120</div>
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button class="btn-secondary" onclick="closeQrisModal()">Batal</button>
+          <button class="btn-primary" onclick="completeQrisSettlement()">Simulasi Bayar Lunas</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PIN SECURITY MODAL -->
+    <div id="pinModal" class="modal-backdrop">
+      <div class="modal-box">
+        <div style="font-size:15px;font-weight:700;margin-bottom:6px;">Konfirmasi Hentikan Siaran</div>
+        <div style="font-size:12px;color:var(--text-secondary);line-height:1.5;margin-bottom:12px;">
+          Masukkan PIN Keamanan (default: <strong>1234</strong>) agar siaran tidak terputus akibat salah sentuh.
+        </div>
+        <input id="pinModalInput" type="password" class="input-box" value="1234" style="margin-bottom:12px;" />
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button class="btn-secondary" onclick="document.getElementById('pinModal').classList.remove('open')">Batal</button>
+          <button class="btn-primary" style="background:var(--live-red);" onclick="confirmPinAndStop()">Hentikan Live</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HEADER -->
+    <div class="app-header">
+      <div class="brand-group">
+        <div class="brand-logo">
+          <svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:#ffffff;stroke-width:2.3;">
+            <path d="M7 5v14" /><path d="M7 5a7 7 0 0 1 0 14" /><path d="M16.5 8.5a5 5 0 0 1 0 7" style="opacity:0.8;" />
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title-row">
+            <span class="brand-name">DiStream</span>
+            <span id="headerTierBadge" class="tier-pill" onclick="openTabByIndex(2)">Upgrade Pro</span>
+            <span id="headerStatusBadge" class="status-chip">
+              <span class="live-dot"></span><span id="headerStatusText">Siap</span>
+            </span>
+          </div>
+          <div class="telemetry-sub">
+            <span id="bitrateReadout">0 kbps</span> &bull; <span id="codecBadgeText">720p60 H.264</span> &bull; <span id="tempReadout">36&deg;C</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="btnSafeZone" class="icon-btn" onclick="toggleSafeZone()" title="Area Chat TikTok">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg>
+        </button>
+        <button id="btnHeaderShield" class="icon-btn" onclick="togglePrivacyShield()" title="Layar Privasi">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </button>
+        <button class="icon-btn" onclick="toggleTheme()" title="Mode Gelap / Terang">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- LIVE CANVAS STAGE -->
+    <div class="stage-container">
+      <div id="liveViewport" class="canvas-viewport" data-frame="clean" onclick="triggerLoveTap(22, true)">
+        <div id="sceneBg" class="scene-visual scene-gameplay">
+          <div id="sceneTitleText" class="scene-label-main">Layar Game Aktif</div>
+          <div id="sceneSubText" class="scene-label-sub">Klik layar = Simulasi Tap Love</div>
+        </div>
+
+        <div id="ovWatermark" class="ov-card ov-watermark">DiStream Free</div>
+
+        <div id="ovGoal" class="ov-card ov-goal">
+          <div class="ov-goal-head"><span>Target Gift</span><span id="ovGoalNums">350 / 1000</span></div>
+          <div class="ov-goal-track"><div id="ovGoalFill" class="ov-goal-fill"></div></div>
+        </div>
+
+        <div id="ovLoveWidget" class="ov-card ov-love-pill">
+          <svg class="heart-icon-svg" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          <div>
+            <div id="ovLoveMain" style="line-height:1.1;">Tap-Tap Love</div>
+            <div id="ovLoveSub" style="font-size:6.5px;opacity:0.75;">1.420 suka</div>
+          </div>
+        </div>
+
+        <div id="customTextCanvasLayer"></div>
+
+        <div id="ovAlertToast" class="ov-card ov-alert-card">
+          <div id="ovAlertCat" style="font-size:7px;font-weight:700;color:var(--overlay-accent);">Dukungan Masuk</div>
+          <div id="ovAlertSender" style="font-size:10px;font-weight:700;margin:1px 0;">@sultan_arena</div>
+          <div id="ovAlertMsg" style="font-size:7.5px;opacity:0.85;">Terima kasih!</div>
+        </div>
+
+        <div id="ovTicker" class="ov-card ov-ticker">
+          <span id="ovTickerText">Selamat datang di live stream — Bantu tap-tap layar &amp; mabar tulis ID di komentar</span>
+        </div>
+
+        <div id="ovSafeZone" class="ov-safezone">Area Komentar TikTok</div>
+      </div>
+
+      <div id="simulcastStageBadge" class="stage-helper-pill">Single RTMP</div>
+    </div>
+
+    <!-- SCENE SWITCHER -->
+    <div class="scene-strip">
+      <button class="scene-btn active" onclick="selectScene('GAMEPLAY', false, this)">Layar Game</button>
+      <button class="scene-btn" onclick="selectScene('STARTING', false, this)">Segera Mulai</button>
+      <button class="scene-btn" onclick="selectScene('BRB', true, this)">Istirahat (Pro)</button>
+      <button class="scene-btn" onclick="selectScene('CAMERA', true, this)">Kamera OIS (Pro)</button>
+      <button id="scenePrivacyBtn" class="scene-btn" onclick="selectScene('PRIVACY', false, this)">Layar Privasi</button>
+    </div>
+
+    <!-- WORKSPACE TABS -->
+    <div class="tab-scroll">
+
+      <!-- TAB 0: OVERLAY, LOVE & CUSTOM TEXT -->
+      <div id="tabPane0" class="tab-pane active">
+        <div class="card">
+          <div class="card-title">
+            <span>Preset Tap-Tap Love &amp; Tema Bingkai</span>
+            <span class="card-badge">Visual</span>
+          </div>
+          <div class="chip-row" style="margin-bottom:9px;">
+            <button class="chip active" onclick="setLovePreset('TAP_LOVE', this)">Tap-Tap Love</button>
+            <button class="chip" onclick="setLovePreset('TARGET_LIKE', this)">Target 5K Like</button>
+            <button class="chip" onclick="setLovePreset('TOP_SUPPORTER', this)">Top Supporter</button>
+          </div>
+          <div class="chip-row" style="margin-bottom:8px;">
+            <button class="chip active" onclick="setFrameTheme('clean', '#2563eb', false, this)">Clean Dark</button>
+            <button class="chip" onclick="setFrameTheme('light', '#2563eb', false, this)">Minimal Light</button>
+            <button class="chip" onclick="setFrameTheme('gold', '#d97706', true, this)">Royal Gold VIP</button>
+          </div>
+          <div class="toggle-row">
+            <div>
+              <div class="layer-info-title">Sembunyikan Watermark DiStream</div>
+              <div id="wmSubHint" class="layer-info-sub">Tersedia mulai Paket Harian (Rp 5.000)</div>
+            </div>
+            <button id="swHideWatermark" class="switch-pill" onclick="toggleCleanWatermark()"></button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <span>Teks Kustom di Layar</span>
+            <span id="customTextQuotaBadge" class="card-badge">1 / 1 teks</span>
+          </div>
+          <div style="display:flex;gap:7px;">
+            <input id="newCustomTextInput" class="input-box" placeholder="Tulis ID Mabar / Pengumuman..." />
+            <button class="btn-primary" onclick="addCustomTextItem()">Tambah</button>
+          </div>
+          <div id="customTextListContainer"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Simulasi Event Penonton Real-Time</div>
+          <div style="display:flex;gap:7px;">
+            <button class="btn-secondary" style="flex:1;" onclick="triggerLoveTap(180, true)">+180 Love</button>
+            <button class="btn-secondary" style="flex:1;" onclick="simulateDonation()">Tes Saweria + TTS</button>
+            <button class="btn-primary" style="flex:1;" onclick="simulateGift()">Tes Gift</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 1: SOUNDFX DECK & MIXER -->
+      <div id="tabPane1" class="tab-pane">
+        <div class="card">
+          <div class="card-title">
+            <span>SoundFX Audio Deck</span>
+            <span class="card-badge">Web Audio Real-Time</span>
+          </div>
+          <div class="sfx-grid">
+            <button class="sfx-pad" onclick="playRealSfx('APPLAUSE', false, this)">
+              <svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+              <span class="sfx-pad-label">Tepuk Tangan</span>
+            </button>
+            <button class="sfx-pad" onclick="playRealSfx('AIRHORN', false, this)">
+              <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+              <span class="sfx-pad-label">Hype Horn</span>
+            </button>
+            <button class="sfx-pad" onclick="playRealSfx('COIN', false, this)">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10"/></svg>
+              <span class="sfx-pad-label">Koin Masuk</span>
+            </button>
+            <button class="sfx-pad censor" onclick="playRealSfx('CENSOR', false, this)">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+              <span class="sfx-pad-label">Sensor 1kHz</span>
+            </button>
+            <button class="sfx-pad pro-pad locked" onclick="playRealSfx('VICTORY', true, this)">
+              <svg viewBox="0 0 24 24"><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/><path d="M4 22h16"/></svg>
+              <span class="sfx-pad-label">Victory (Pro)</span>
+            </button>
+            <button class="sfx-pad pro-pad locked" onclick="playRealSfx('RIMSHOT', true, this)">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg>
+              <span class="sfx-pad-label">Komedi (Pro)</span>
+            </button>
+            <button class="sfx-pad pro-pad locked" onclick="playRealSfx('BASS_DROP', true, this)">
+              <svg viewBox="0 0 24 24"><path d="M2 12h4l3-9 5 18 3-9h5"/></svg>
+              <span class="sfx-pad-label">Bass Drop (Pro)</span>
+            </button>
+            <button class="sfx-pad pro-pad locked" onclick="playRealSfx('RISER', true, this)">
+              <svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
+              <span class="sfx-pad-label">Riser (Pro)</span>
+            </button>
+          </div>
+
+          <div style="margin-top:12px;">
+            <div style="display:flex;justify-content:space-between;font-size:11.5px;font-weight:600;">
+              <span>Level Audio SoundFX</span><span id="sfxVolLabel">85%</span>
+            </div>
+            <div id="vuSfx" class="vu-strip"></div>
+            <input type="range" min="0" max="150" value="85" oninput="sfxGainPercent=this.value;document.getElementById('sfxVolLabel').textContent=this.value+'%'" />
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Audio Mixer &amp; Penjernih Suara DSP</div>
+          <div style="font-size:11.5px;font-weight:600;">Mikrofon Streamer</div>
+          <div id="vuMic" class="vu-strip"></div>
+          <div style="font-size:11.5px;font-weight:600;margin-top:6px;">Suara Internal Game</div>
+          <div id="vuGame" class="vu-strip"></div>
+        </div>
+      </div>
+
+      <!-- TAB 2: SAAS SUBSCRIPTION (HARIAN / MINGGUAN / BULANAN) & EXCLUSIVE VIP -->
+      <div id="tabPane2" class="tab-pane">
+        <div class="card">
+          <div class="card-title">
+            <span>Status Langganan &amp; Analitik Kreator</span>
+            <span id="saasStatusBadge" class="card-badge">Starter Gratis</span>
+          </div>
+          <div id="saasNoticeBox" style="font-size:11.5px;color:var(--good-green);font-weight:600;margin-bottom:6px;">
+            Tips: Ketik kode promo <strong>TRIALVIP</strong> untuk langsung aktif VIP gratis 24 jam, atau <strong>XYKAL50</strong> diskon 50%!
+          </div>
+          <div class="stat-grid-3">
+            <div class="stat-mini">
+              <div style="font-size:10px;color:var(--text-secondary);">Pendapatan Sesi</div>
+              <div id="statRevenueIdr" style="font-size:12px;font-weight:700;margin-top:2px;">Rp 0</div>
+            </div>
+            <div class="stat-mini">
+              <div style="font-size:10px;color:var(--text-secondary);">Peak Bitrate</div>
+              <div id="statPeakBitrate" style="font-size:12px;font-weight:700;margin-top:2px;">0 kbps</div>
+            </div>
+            <div class="stat-mini">
+              <div style="font-size:10px;color:var(--text-secondary);">Klip Replay 30s</div>
+              <div id="statReplayClips" style="font-size:12px;font-weight:700;margin-top:2px;">0 klip</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <span>Pilih Paket Langganan SaaS</span>
+            <span class="card-badge gold">QRIS Pakasir</span>
+          </div>
+          <span class="field-label">Kode Promo / Voucher Komunitas</span>
+          <input id="promoInputBox" class="input-box" placeholder="Coba ketik XYKAL50 atau TRIALVIP" style="margin-bottom:10px;" />
+
+          <!-- DAILY PLAN -->
+          <div id="cardPlanDAILY" class="plan-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-size:13px;font-weight:700;">Pass Harian (24 Jam)</div>
+                <div style="font-size:12px;font-weight:700;color:var(--brand);">Rp 5.000 / hari</div>
+              </div>
+              <button class="btn-primary" onclick="openQrisCheckout('DAILY', 'Pass Harian', 5000)">Pilih Harian</button>
+            </div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;line-height:1.45;">
+              Cocok untuk mabar / turnamen malam minggu: Hapus Watermark 100%, Unlock 1080p60 High-Bitrate + Codec H.265/HEVC hemat kuota, Full 8 SoundFX Deck, &amp; 5 Scene Penuh.
+            </div>
+          </div>
+
+          <!-- WEEKLY PLAN -->
+          <div id="cardPlanWEEKLY" class="plan-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-size:13px;font-weight:700;">Creator Mingguan (7 Hari)</div>
+                <div style="font-size:12px;font-weight:700;color:var(--brand);">Rp 19.000 / minggu <span style="font-size:10px;color:var(--good-green);">(Hemat 46%)</span></div>
+              </div>
+              <button class="btn-primary" onclick="openQrisCheckout('WEEKLY', 'Creator Mingguan', 19000)">Pilih Mingguan</button>
+            </div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;line-height:1.45;">
+              Semua fitur Harian + <strong>Cloud Multi-Stream Simulcast</strong> (1x Upload HP langsung live ke TikTok + YouTube + Twitch hemat kuota 66%), <strong>Instant Replay 30s</strong>, &amp; Teks Kustom Tanpa Batas.
+            </div>
+          </div>
+
+          <!-- MONTHLY PLAN -->
+          <div id="cardPlanMONTHLY" class="plan-card popular">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-size:13px;font-weight:700;">Studio Pro Bulanan VIP (30 Hari)</div>
+                <div style="font-size:12px;font-weight:700;color:var(--vip-gold);">Rp 59.000 / bulan <span style="font-size:10px;color:var(--good-green);">(Paling Populer)</span></div>
+              </div>
+              <button class="btn-primary" onclick="openQrisCheckout('MONTHLY', 'Studio Pro VIP', 59000)">Pilih VIP</button>
+            </div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;line-height:1.45;">
+              Semua fitur Mingguan + <strong>Suara Pintar TTS Pembaca Saweria/Gift Bahasa Indonesia</strong>, <strong>Cloud Anti-Disconnect Shield 60 Detik</strong> (Room TikTok anti-putus saat ganti sinyal), &amp; Analitik IDR Penuh.
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Kontrol Fitur Eksklusif Cloud Pro</div>
+          <div class="toggle-row">
+            <div>
+              <div class="layer-info-title">Cloud Multi-Stream Simulcast 3 Platform</div>
+              <div class="layer-info-sub">Live serentak TikTok + YouTube + Twitch hemat baterai</div>
+            </div>
+            <button id="swSimulcast" class="switch-pill" onclick="toggleProFeature('SIMULCAST', this)"></button>
+          </div>
+          <div class="toggle-row">
+            <div>
+              <div class="layer-info-title">Suara Pintar TTS Pembaca Donasi/Gift</div>
+              <div class="layer-info-sub">Membacakan pesan Saweria otomatis di dalam stream</div>
+            </div>
+            <button id="swSmartTts" class="switch-pill" onclick="toggleProFeature('TTS', this)"></button>
+          </div>
+          <div class="toggle-row">
+            <div>
+              <div class="layer-info-title">Cloud Anti-Disconnect Shield (60 Detik)</div>
+              <div class="layer-info-sub">Menjaga room live tidak mati saat jaringan drop</div>
+            </div>
+            <button id="swFailover" class="switch-pill" onclick="toggleProFeature('FAILOVER', this)"></button>
+          </div>
+          <button class="btn-secondary" style="width:100%;margin-top:8px;" onclick="saveReplay30s()">Simpan Replay Momen 30 Detik Terakhir</button>
+        </div>
+      </div>
+
+      <!-- TAB 3: KEAMANAN & SERVER RTMP -->
+      <div id="tabPane3" class="tab-pane">
+        <div class="card">
+          <div class="card-title">
+            <span>Vault Keamanan Stream Key (AES-256)</span>
+            <span class="card-badge">Hardware Keystore</span>
+          </div>
+          <span class="field-label">Server Ingest RTMP / RTMPS</span>
+          <input id="serverUrlInput" class="input-box" value="rtmps://push.rtmp.tiktok.com/live" style="margin-bottom:8px;" />
+          <span class="field-label">Stream Key Rahasia</span>
+          <div style="display:flex;gap:6px;">
+            <input id="streamKeyField" type="password" class="input-box" value="sk_live_distream_99481a0f82c" />
+            <button class="btn-secondary" onclick="const f=document.getElementById('streamKeyField');f.type=f.type==='password'?'text':'password'">Lihat</button>
+          </div>
+          <div style="display:flex;gap:7px;margin-top:10px;">
+            <button class="btn-primary" style="flex:1;background:var(--live-red);" onclick="activatePanicMode()">Darurat Panik (Kunci Layar+Mic)</button>
+            <button class="btn-secondary" onclick="toggleOrientationMode()">Rotasi 9:16 / 16:9</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Proteksi Privasi Berlapis</div>
+          <div class="toggle-row">
+            <div>
+              <div class="layer-info-title">Blokir Tangkapan Layar Aplikasi (FLAG_SECURE)</div>
+              <div class="layer-info-sub">Stream Key &amp; PIN tidak pernah terlihat di rekaman</div>
+            </div>
+            <button class="switch-pill on" onclick="this.classList.toggle('on')"></button>
+          </div>
+          <div class="toggle-row">
+            <div>
+              <div class="layer-info-title">Kunci PIN Sebelum Menghentikan Live</div>
+              <div class="layer-info-sub">Wajib verifikasi PIN (1234) saat tombol Akhiri ditekan</div>
+            </div>
+            <button class="switch-pill on" onclick="pinGuardEnabled=!pinGuardEnabled;this.classList.toggle('on')"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: LIVE CHAT & FILTER TEST -->
+      <div id="tabPane4" class="tab-pane">
+        <div class="card">
+          <div class="card-title">Uji Filter Keamanan Chat Otomatis</div>
+          <div style="display:flex;gap:6px;">
+            <input id="testChatInput" class="input-box" value="Gas mabar bang tanpa judol dan slot gacor!" />
+            <button class="btn-primary" onclick="sendFilteredChatTest()">Kirim</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Riwayat Event Live Real-Time</div>
+          <div id="eventFeedContainer" style="display:flex;flex-direction:column;gap:6px;"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- BOTTOM ACTION & 5-TAB NAVIGATION -->
+    <div class="bottom-dock">
+      <div class="go-live-bar">
+        <button id="btnBottomMute" class="square-action" onclick="toggleMicMute()" title="Bisu Mikrofon">
+          <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
+        </button>
+        <button id="btnBottomRec" class="square-action" onclick="toggleLocalRec()" title="Rekam MP4 Lokal">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg>
+        </button>
+        <button id="btnGoLiveMain" class="main-stream-btn" onclick="handleMainStreamAction()">
+          <span id="btnGoLiveLabel">Mulai Siaran Live</span>
+        </button>
+      </div>
+
+      <div class="nav-bar">
+        <button class="nav-item active" onclick="openTabByIndex(0)">
+          <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+          <span>Overlay</span>
+        </button>
+        <button class="nav-item" onclick="openTabByIndex(1)">
+          <svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          <span>SoundFX</span>
+        </button>
+        <button class="nav-item" onclick="openTabByIndex(2)">
+          <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <span>Pro SaaS</span>
+        </button>
+        <button class="nav-item" onclick="openTabByIndex(3)">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span>Keamanan</span>
+        </button>
+        <button class="nav-item" onclick="openTabByIndex(4)">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span>Chat</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT SIDEBAR: IN-GAME BAR + SAAS ARCHITECTURE -->
+  <div class="side-showcase">
+    <div class="ingame-mockup">
+      <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.68);margin-bottom:10px;">
+        Bar Melayang di Atas Game (Geser &amp; Bunyikan SoundFX Cepat)
+      </div>
+      <div id="draggableHud" class="floating-bar">
+        <span style="width:7px;height:7px;border-radius:50%;background:#10b981;"></span>
+        <span id="hudStatusText" style="font-size:11px;font-weight:700;margin-right:4px;">Siap &bull; 0.0 Mbps</span>
+        <button class="f-pill" onclick="toggleMicMute()">Mic</button>
+        <button class="f-pill" onclick="togglePrivacyShield()">Privasi</button>
+        <button class="f-pill" onclick="playRealSfx('AIRHORN', false, this)">Horn</button>
+        <button class="f-pill" style="background:#4c1d1d;" onclick="playRealSfx('CENSOR', false, this)">Sensor 1kHz</button>
+      </div>
+      <div id="miniGameChat" style="margin-top:10px;width:280px;background:rgba(16,18,24,0.82);border:1px solid rgba(255,255,255,0.12);border-radius:11px;padding:8px 10px;font-size:11px;color:#e5e7eb;display:flex;flex-direction:column;gap:4px;"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span>Arsitektur SaaS &amp; Fitur Eksklusif v3.0</span>
+        <span class="card-badge gold">Verified CI/CD</span>
+      </div>
+      <div style="font-size:12px;color:var(--text-secondary);line-height:1.65;display:flex;flex-direction:column;gap:8px;">
+        <div><strong style="color:var(--text-primary);">1. Paket Harian (Rp 5.000) / Mingguan (Rp 19.000) / Bulanan VIP (Rp 59.000):</strong> Terintegrasi API QRIS <strong>Pakasir</strong> + kode promo <code>XYKAL50</code> &amp; <code>TRIALVIP</code> + token lisensi <code>HMAC-SHA256</code> anti-manipulasi.</div>
+        <div><strong style="color:var(--text-primary);">2. Cloud Multi-Stream Simulcast:</strong> HP cukup upload 1 stream hemat baterai, server mendistribusikan serentak ke TikTok LIVE + YouTube + Twitch.</div>
+        <div><strong style="color:var(--text-primary);">3. Smart TTS Pembaca Donasi &amp; Anti-Disconnect 60s:</strong> Membacakan pesan Saweria/Gift otomatis dalam Bahasa Indonesia &amp; menjaga room TikTok tidak putus saat sinyal drop.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Web Audio Synthesizer
+    let audioCtx = null;
+    let sfxGainPercent = 85;
+    let activeSfxMeterBoost = 0;
+
+    function ensureAudio() {
+      if (!audioCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (Ctx) audioCtx = new Ctx();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }
+
+    // Active SaaS Tier State
+    let currentTier = 'FREE'; // FREE | DAILY | WEEKLY | MONTHLY
+    let pendingCheckoutPlan = null;
+    let smartTtsEnabled = false;
+    let simulcastActive = false;
+    let failoverActive = false;
+    let revenueIdr = 0;
+    let peakKbps = 0;
+    let replayClips = 0;
+
+    function openTabByIndex(idx) {
+      document.querySelectorAll('.tab-pane').forEach((p, i) => p.classList.toggle('active', i === idx));
+      document.querySelectorAll('.nav-item').forEach((b, i) => b.classList.toggle('active', i === idx));
+    }
+
+    function openQrisCheckout(tierCode, title, basePrice) {
+      const promo = document.getElementById('promoInputBox').value.trim().toUpperCase();
+      if (promo === 'TRIALVIP') {
+        activateTierNow('MONTHLY', 'Studio Pro VIP (Trial 24 Jam)');
+        return;
+      }
+      let discount = 0;
+      if (promo === 'XYKAL50') discount = 50;
+      else if (promo === 'HEMAT20') discount = 20;
+
+      const finalPrice = Math.round(basePrice * (1 - discount / 100));
+      const fee = Math.round(finalPrice * 0.007) + 310;
+      const total = finalPrice + fee;
+      const orderId = 'DST-' + tierCode + '-' + String(Date.now()).slice(-6);
+
+      pendingCheckoutPlan = { tierCode, title };
+      document.getElementById('qrisPlanTitle').textContent = 'QRIS — ' + title;
+      document.getElementById('qrisSummaryText').textContent =
+        `Tagihan: Rp ${(total).toLocaleString('id-ID')} ${discount > 0 ? `(Diskon Promo ${discount}%)` : '(Termasuk biaya QRIS Pakasir)'}`;
+      document.getElementById('qrisOrderIdLabel').textContent = 'ORDER: ' + orderId;
+      drawQrisSvgPattern(orderId);
+      document.getElementById('qrisModal').classList.add('open');
+    }
+
+    function drawQrisSvgPattern(seedStr) {
+      const svg = document.getElementById('qrisMatrixSvg');
+      let rects = '';
+      // Corner finder patterns
+      const corners = [[8,8],[80,8],[8,80]];
+      corners.forEach(([cx, cy]) => {
+        rects += `<rect x="${cx}" y="${cy}" width="32" height="32" rx="4" fill="none" stroke="#111827" stroke-width="5"/>`;
+        rects += `<rect x="${cx+9}" y="${cy+9}" width="14" height="14" rx="2"/>`;
+      });
+      for (let r = 0; r < 11; r++) {
+        for (let c = 0; c < 11; c++) {
+          const x = 10 + c * 9.5, y = 10 + r * 9.5;
+          if ((c < 4 && r < 4) || (c > 6 && r < 4) || (c < 4 && r > 6)) continue;
+          if (((r * 13 + c * 7 + seedStr.charCodeAt(r % seedStr.length)) % 3) !== 0) {
+            rects += `<rect x="${x}" y="${y}" width="6.5" height="6.5" rx="1.2"/>`;
+          }
+        }
+      }
+      svg.innerHTML = rects;
+    }
+
+    function closeQrisModal() {
+      document.getElementById('qrisModal').classList.remove('open');
+    }
+
+    function completeQrisSettlement() {
+      closeQrisModal();
+      if (!pendingCheckoutPlan) return;
+      activateTierNow(pendingCheckoutPlan.tierCode, pendingCheckoutPlan.title);
+    }
+
+    function activateTierNow(tierCode, label) {
+      currentTier = tierCode;
+      playRealSfx('VICTORY', false, null);
+
+      const headerPill = document.getElementById('headerTierBadge');
+      headerPill.textContent = label;
+      headerPill.classList.add('pro');
+
+      document.getElementById('saasStatusBadge').textContent = label;
+      document.getElementById('saasNoticeBox').textContent =
+        `Lisensi ${label} aktif! Watermark dihapus & fitur eksklusif sesuai paket telah dibuka.`;
+      document.getElementById('codecBadgeText').textContent = '1080p60 HEVC';
+
+      // Auto-remove watermark on paid tier
+      document.getElementById('ovWatermark').style.display = 'none';
+      document.getElementById('swHideWatermark').classList.add('on');
+      document.getElementById('wmSubHint').textContent = 'Watermark bersih 100% (Pro Aktif)';
+
+      // Unlock Pro SoundFX pads visually
+      document.querySelectorAll('.pro-pad').forEach(b => b.classList.remove('locked'));
+
+      // Highlight active plan card
+      ['DAILY', 'WEEKLY', 'MONTHLY'].forEach(code => {
+        document.getElementById('cardPlan' + code).classList.toggle('active-tier', code === tierCode);
+      });
+
+      if (tierCode === 'WEEKLY' || tierCode === 'MONTHLY') {
+        simulcastActive = true;
+        document.getElementById('swSimulcast').classList.add('on');
+        document.getElementById('simulcastStageBadge').textContent = 'Simulcast: TikTok+YT+Twitch';
+      }
+      if (tierCode === 'MONTHLY') {
+        smartTtsEnabled = true;
+        failoverActive = true;
+        document.getElementById('swSmartTts').classList.add('on');
+        document.getElementById('swFailover').classList.add('on');
+      }
+      renderCustomTexts();
+      pushFeedEvent('SaaS', 'Lisensi Aktif', `Paket ${label} berhasil diaktifkan`);
+    }
+
+    function toggleCleanWatermark() {
+      if (currentTier === 'FREE') {
+        openTabByIndex(2);
+        return;
+      }
+      const sw = document.getElementById('swHideWatermark');
+      sw.classList.toggle('on');
+      const hidden = sw.classList.contains('on');
+      const wm = document.getElementById('ovWatermark');
+      wm.textContent = '@kreator_pro';
+      wm.style.display = hidden ? 'none' : 'block';
+    }
+
+    function toggleProFeature(feature, btn) {
+      if ((feature === 'SIMULCAST' && (currentTier === 'FREE' || currentTier === 'DAILY')) ||
+          ((feature === 'TTS' || feature === 'FAILOVER') && currentTier !== 'MONTHLY')) {
+        alert('Fitur eksklusif ini memerlukan upgrade paket Mingguan / VIP Bulanan.');
+        return;
+      }
+      btn.classList.toggle('on');
+      const on = btn.classList.contains('on');
+      if (feature === 'SIMULCAST') {
+        simulcastActive = on;
+        document.getElementById('simulcastStageBadge').textContent = on ? 'Simulcast: TikTok+YT+Twitch' : 'Single RTMP';
+      } else if (feature === 'TTS') {
+        smartTtsEnabled = on;
+      } else if (feature === 'FAILOVER') {
+        failoverActive = on;
+      }
+    }
+
+    function saveReplay30s() {
+      if (currentTier === 'FREE' || currentTier === 'DAILY') {
+        openTabByIndex(2);
+        alert('Instant Replay 30 Detik tersedia mulai Paket Mingguan (Rp 19.000).');
+        return;
+      }
+      replayClips++;
+      document.getElementById('statReplayClips').textContent = replayClips + ' klip';
+      pushFeedEvent('Replay', 'Klip #' + replayClips, 'Momen 30 detik terakhir disimpan untuk konten');
+    }
+
+    function speakIndonesianTts(text) {
+      if (!smartTtsEnabled || !('speechSynthesis' in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'id-ID';
+        utter.rate = 1.02;
+        window.speechSynthesis.speak(utter);
+      } catch (_) {}
+    }
+
+    function playRealSfx(kind, requiresPro, btnEl) {
+      if (requiresPro && currentTier === 'FREE') {
+        openTabByIndex(2);
+        return;
+      }
+      const ctx = ensureAudio();
+      if (btnEl) {
+        btnEl.classList.add('playing');
+        setTimeout(() => btnEl.classList.remove('playing'), 420);
+      }
+      activeSfxMeterBoost = 0.92;
+      setTimeout(() => { activeSfxMeterBoost = 0; }, 650);
+      if (!ctx) return;
+
+      const now = ctx.currentTime;
+      const master = ctx.createGain();
+      master.gain.value = (sfxGainPercent / 100) * 0.35;
+      master.connect(ctx.destination);
+
+      if (kind === 'COIN') {
+        [987.77, 1318.51].forEach((freq, idx) => {
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = 'sine'; o.frequency.value = freq;
+          g.gain.setValueAtTime(0.001, now + idx * 0.09);
+          g.gain.exponentialRampToValueAtTime(0.9, now + idx * 0.09 + 0.015);
+          g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.45);
+          o.connect(g); g.connect(master);
+          o.start(now + idx * 0.09); o.stop(now + idx * 0.09 + 0.48);
+        });
+      } else if (kind === 'AIRHORN') {
+        [0, 0.17, 0.34].forEach((offset, i) => {
+          const dur = i === 2 ? 0.45 : 0.13;
+          [392, 466.16, 587.33].forEach(f => {
+            const o = ctx.createOscillator(), g = ctx.createGain();
+            o.type = 'sawtooth'; o.frequency.value = f;
+            g.gain.setValueAtTime(0.3, now + offset);
+            g.gain.exponentialRampToValueAtTime(0.01, now + offset + dur);
+            o.connect(g); g.connect(master);
+            o.start(now + offset); o.stop(now + offset + dur);
+          });
+        });
+      } else if (kind === 'VICTORY') {
+        [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = 'triangle'; o.frequency.value = f;
+          g.gain.setValueAtTime(0.01, now + i * 0.1);
+          g.gain.linearRampToValueAtTime(0.75, now + i * 0.1 + 0.03);
+          g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.5);
+          o.connect(g); g.connect(master);
+          o.start(now + i * 0.1); o.stop(now + i * 0.1 + 0.55);
+        });
+      } else if (kind === 'BASS_DROP') {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(155, now);
+        o.frequency.exponentialRampToValueAtTime(34, now + 0.85);
+        g.gain.setValueAtTime(1.0, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+        o.connect(g); g.connect(master);
+        o.start(now); o.stop(now + 0.92);
+      } else if (kind === 'CENSOR') {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = 1000;
+        g.gain.setValueAtTime(0.85, now);
+        g.gain.setValueAtTime(0.85, now + 0.5);
+        g.gain.linearRampToValueAtTime(0.001, now + 0.55);
+        o.connect(g); g.connect(master);
+        o.start(now); o.stop(now + 0.56);
+      } else if (kind === 'RISER') {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(190, now);
+        o.frequency.exponentialRampToValueAtTime(980, now + 1.0);
+        g.gain.setValueAtTime(0.15, now);
+        g.gain.linearRampToValueAtTime(0.7, now + 0.95);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 1.05);
+        o.connect(g); g.connect(master);
+        o.start(now); o.stop(now + 1.06);
+      } else {
+        const bufferSize = ctx.sampleRate * 0.6;
+        const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.3));
+        }
+        const white = ctx.createBufferSource();
+        white.buffer = noiseBuffer;
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = kind === 'RIMSHOT' ? 2400 : 1250;
+        white.connect(filter); filter.connect(master);
+        white.start(now);
+      }
+    }
+
+    // Studio state & UI helpers
+    let isLive = false, isMuted = false, isRec = false, isShield = false, isPortrait = true;
+    let pinGuardEnabled = true;
+    let likesCount = 1420, goalCurrent = 350, uptimeSec = 0;
+    let lovePresetMode = 'TAP_LOVE', topSupporterName = '@rizky_gaming';
+    let customTexts = [{ id: 't1', text: 'ID Mabar: 88210492', x: 8, y: 62, visible: true }];
+
+    function maxAllowedCustomTexts() {
+      if (currentTier === 'FREE') return 1;
+      if (currentTier === 'DAILY') return 3;
+      return 99;
+    }
+
+    function renderCustomTexts() {
+      const canvasHolder = document.getElementById('customTextCanvasLayer');
+      const listHolder = document.getElementById('customTextListContainer');
+      canvasHolder.innerHTML = ''; listHolder.innerHTML = '';
+      const cap = maxAllowedCustomTexts();
+      document.getElementById('customTextQuotaBadge').textContent = `${customTexts.length} / ${cap} teks`;
+
+      customTexts.forEach(item => {
+        if (item.visible) {
+          const el = document.createElement('div');
+          el.className = 'ov-card ov-custom-text';
+          el.style.left = item.x + '%'; el.style.top = item.y + '%';
+          el.textContent = item.text;
+          canvasHolder.appendChild(el);
+        }
+        const row = document.createElement('div');
+        row.style.cssText = 'background:var(--surface-2);border-radius:10px;padding:8px 10px;margin-top:8px;';
+        row.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;font-weight:600;margin-bottom:4px;">
+            <span>${item.text}</span>
+            <button class="btn-secondary" style="padding:2px 7px;font-size:10px;" onclick="removeCustomText('${item.id}')">Hapus</button>
+          </div>
+          <input type="range" min="18" max="82" value="${item.y}" oninput="moveCustomText('${item.id}', this.value)" />
+        `;
+        listHolder.appendChild(row);
+      });
+    }
+
+    function addCustomTextItem() {
+      const inp = document.getElementById('newCustomTextInput');
+      const val = inp.value.trim();
+      if (!val) return;
+      if (customTexts.length >= maxAllowedCustomTexts()) {
+        openTabByIndex(2);
+        alert('Kuota teks paket Starter penuh (1/1). Upgrade ke Harian / Mingguan untuk menambah teks bebas.');
+        return;
+      }
+      customTexts.push({ id: 't' + Date.now(), text: val, x: 8, y: 70, visible: true });
+      inp.value = '';
+      renderCustomTexts();
+    }
+    function moveCustomText(id, yVal) {
+      const f = customTexts.find(t => t.id === id);
+      if (f) f.y = Number(yVal);
+      renderCustomTexts();
+    }
+    function removeCustomText(id) {
+      customTexts = customTexts.filter(t => t.id !== id);
+      renderCustomTexts();
+    }
+
+    function triggerLoveTap(addAmount, spawnHearts) {
+      likesCount += addAmount;
+      updateLoveWidgetText();
+      if (spawnHearts) {
+        const vp = document.getElementById('liveViewport');
+        for (let i = 0; i < 3; i++) {
+          setTimeout(() => {
+            const h = document.createElement('div');
+            h.className = 'floating-heart';
+            h.style.right = (12 + Math.random() * 20) + 'px';
+            h.innerHTML = '<svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:#ef4444;stroke:none;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>';
+            vp.appendChild(h);
+            setTimeout(() => h.remove(), 1200);
+          }, i * 110);
+        }
+      }
+    }
+
+    function setLovePreset(mode, btn) {
+      lovePresetMode = mode;
+      btn.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      updateLoveWidgetText();
+    }
+
+    function updateLoveWidgetText() {
+      const main = document.getElementById('ovLoveMain');
+      const sub = document.getElementById('ovLoveSub');
+      if (lovePresetMode === 'TAP_LOVE') {
+        main.textContent = 'Tap-Tap Love';
+        sub.textContent = likesCount.toLocaleString('id-ID') + ' suka';
+      } else if (lovePresetMode === 'TARGET_LIKE') {
+        main.textContent = 'Target Like';
+        sub.textContent = likesCount.toLocaleString('id-ID') + ' / 5.000';
+      } else {
+        main.textContent = 'Top Supporter';
+        sub.textContent = topSupporterName;
+      }
+    }
+
+    function setFrameTheme(code, accentHex, requiresPro, btn) {
+      if (requiresPro && currentTier === 'FREE') {
+        openTabByIndex(2);
+        return;
+      }
+      btn.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('liveViewport').setAttribute('data-frame', code);
+      document.documentElement.style.setProperty('--overlay-accent', accentHex);
+    }
+
+    function selectScene(sceneKey, requiresPro, btn) {
+      if (requiresPro && currentTier === 'FREE') {
+        openTabByIndex(2);
+        return;
+      }
+      document.querySelectorAll('.scene-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      isShield = sceneKey === 'PRIVACY';
+      document.getElementById('btnHeaderShield').classList.toggle('warn', isShield);
+      const map = {
+        GAMEPLAY: ['scene-gameplay', 'Layar Game Aktif', 'Klik layar = Simulasi Tap Love'],
+        STARTING: ['scene-starting', 'Siaran Segera Dimulai', 'Menyiapkan Arena'],
+        BRB: ['scene-brb', 'Istirahat Sebentar', 'Segera Kembali'],
+        CAMERA: ['scene-camera', 'Kamera Penuh (OIS)', 'Mode Ngobrol Kreator'],
+        PRIVACY: ['scene-privacy', 'Layar Privasi Aktif', 'OTP & Chat Aman']
+      };
+      const [cls, title, sub] = map[sceneKey];
+      document.getElementById('sceneBg').className = 'scene-visual ' + cls;
+      document.getElementById('sceneTitleText').textContent = title;
+      document.getElementById('sceneSubText').textContent = sub;
+    }
+
+    function togglePrivacyShield() {
+      if (isShield) selectScene('GAMEPLAY', false, document.querySelector('.scene-btn'));
+      else selectScene('PRIVACY', false, document.getElementById('scenePrivacyBtn'));
+    }
+
+    function activatePanicMode() {
+      selectScene('PRIVACY', false, document.getElementById('scenePrivacyBtn'));
+      if (!isMuted) toggleMicMute();
+      pushFeedEvent('Keamanan', 'Darurat Panik', 'Layar Privasi & Bisu Mic dikunci');
+    }
+
+    function simulateGift() {
+      playRealSfx('COIN', false, null);
+      topSupporterName = '@sultan_arena';
+      goalCurrent = Math.min(1000, goalCurrent + 299);
+      revenueIdr += 24500;
+      document.getElementById('ovGoalNums').textContent = goalCurrent + ' / 1000';
+      document.getElementById('ovGoalFill').style.width = Math.round((goalCurrent / 1000) * 100) + '%';
+      document.getElementById('statRevenueIdr').textContent = 'Rp ' + revenueIdr.toLocaleString('id-ID');
+      updateLoveWidgetText();
+      showCanvasAlert('Gift TikTok', '@sultan_arena', 'Mengirim Corgi x1');
+      speakIndonesianTts('Terima kasih sultan arena sudah mengirim gift Corgi');
+      pushFeedEvent('Gift', '@sultan_arena', 'Mengirim Corgi x1 (+Rp 24.500)');
+    }
+
+    function simulateDonation() {
+      playRealSfx('COIN', false, null);
+      revenueIdr += 50000;
+      document.getElementById('statRevenueIdr').textContent = 'Rp ' + revenueIdr.toLocaleString('id-ID');
+      showCanvasAlert('Saweria', 'Budi Santoso (Rp 50.000)', 'Semangat push Mythic malam ini!');
+      speakIndonesianTts('Terima kasih Budi Santoso atas saweria lima puluh ribu rupiah. Semangat push Mythic malam ini!');
+      pushFeedEvent('Saweria', 'Budi Santoso', 'Rp 50.000 — Semangat push Mythic malam ini!');
+    }
+
+    let alertTimer = null;
+    function showCanvasAlert(cat, sender, msg) {
+      document.getElementById('ovAlertCat').textContent = cat;
+      document.getElementById('ovAlertSender').textContent = sender;
+      document.getElementById('ovAlertMsg').textContent = msg;
+      const card = document.getElementById('ovAlertToast');
+      card.classList.add('visible');
+      if (alertTimer) clearTimeout(alertTimer);
+      alertTimer = setTimeout(() => card.classList.remove('visible'), 3600);
+    }
+
+    function toggleTheme() {
+      const root = document.documentElement;
+      root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    }
+    function toggleSafeZone() {
+      const el = document.getElementById('ovSafeZone');
+      const show = el.style.display !== 'block';
+      el.style.display = show ? 'block' : 'none';
+      document.getElementById('btnSafeZone').classList.toggle('active', show);
+    }
+    function toggleOrientationMode() {
+      isPortrait = !isPortrait;
+      document.getElementById('liveViewport').classList.toggle('landscape', !isPortrait);
+    }
+    function toggleMicMute() {
+      isMuted = !isMuted;
+      document.getElementById('btnBottomMute').classList.toggle('muted', isMuted);
+    }
+    function toggleLocalRec() {
+      isRec = !isRec;
+      document.getElementById('btnBottomRec').classList.toggle('recording', isRec);
+    }
+
+    function handleMainStreamAction() {
+      if (isLive && pinGuardEnabled) {
+        document.getElementById('pinModal').classList.add('open');
+        return;
+      }
+      toggleLiveStreamNow();
+    }
+    function confirmPinAndStop() {
+      if (document.getElementById('pinModalInput').value === '1234') {
+        document.getElementById('pinModal').classList.remove('open');
+        toggleLiveStreamNow();
+      }
+    }
+    function toggleLiveStreamNow() {
+      isLive = !isLive;
+      document.getElementById('headerStatusBadge').classList.toggle('live', isLive);
+      document.getElementById('btnGoLiveMain').classList.toggle('live', isLive);
+      document.getElementById('btnGoLiveLabel').textContent = isLive ? 'Akhiri Siaran Live' : 'Mulai Siaran Live';
+      document.getElementById('headerStatusText').textContent = isLive ? 'Live 00:00' : 'Siap';
+    }
+
+    const BANNED = ['judol', 'slot gacor', 'zeus88', 'kasino', 'kasar'];
+    function sendFilteredChatTest() {
+      let msg = document.getElementById('testChatInput').value.trim();
+      BANNED.forEach(w => { msg = msg.replace(new RegExp(w, 'gi'), '***'); });
+      if (msg) pushFeedEvent('Chat', '@viewer_id', msg);
+    }
+
+    function pushFeedEvent(type, sender, msg) {
+      const box = document.getElementById('eventFeedContainer');
+      const row = document.createElement('div');
+      row.style.cssText = 'background:var(--surface-2);border-radius:9px;padding:7px 10px;font-size:11.5px;display:flex;justify-content:space-between;gap:8px;';
+      row.innerHTML = `<span><strong>[${type}] ${sender}:</strong> ${msg}</span><span style="color:var(--text-muted);font-size:10px;">${new Date().toTimeString().slice(0,8)}</span>`;
+      box.prepend(row);
+
+      const mini = document.getElementById('miniGameChat');
+      const mLine = document.createElement('div');
+      mLine.textContent = `${sender}: ${msg}`;
+      mini.prepend(mLine);
+      while (mini.children.length > 4) mini.lastChild.remove();
+    }
+
+    // VU meters & live loop
+    ['vuSfx', 'vuMic', 'vuGame'].forEach(id => {
+      const el = document.getElementById(id);
+      for (let i = 0; i < 22; i++) { const d = document.createElement('div'); d.className = 'vu-seg'; el.appendChild(d); }
+    });
+    function paintVu(id, norm) {
+      const segs = document.getElementById(id).children;
+      const active = Math.round(norm * 22);
+      for (let i = 0; i < 22; i++) {
+        segs[i].style.background = i >= active ? 'var(--surface-2)' : (i >= 18 ? '#ef4444' : i >= 14 ? '#f59e0b' : '#10b981');
+      }
+    }
+    setInterval(() => {
+      paintVu('vuSfx', activeSfxMeterBoost > 0 ? 0.6 + Math.random() * 0.35 : 0.04);
+      paintVu('vuMic', isMuted ? 0 : 0.25 + Math.random() * 0.5);
+      paintVu('vuGame', 0.28 + Math.random() * 0.32);
+    }, 110);
+
+    setInterval(() => {
+      if (!isLive) return;
+      uptimeSec++;
+      const um = String(Math.floor(uptimeSec / 60)).padStart(2, '0');
+      const us = String(uptimeSec % 60).padStart(2, '0');
+      const kbps = (currentTier === 'FREE' ? 3950 : 5920) + Math.floor(Math.random() * 320);
+      peakKbps = Math.max(peakKbps, kbps);
+      document.getElementById('headerStatusText').textContent = `Live ${um}:${us}`;
+      document.getElementById('bitrateReadout').textContent = `${kbps} kbps`;
+      document.getElementById('statPeakBitrate').textContent = `${peakKbps} kbps`;
+      document.getElementById('hudStatusText').textContent = `Live ${um}:${us} • ${(kbps / 1000).toFixed(1)} Mbps`;
+    }, 1000);
+
+    renderCustomTexts();
+    pushFeedEvent('Sistem', 'DiStream v3.0', 'SaaS Billing QRIS, Vault AES-256 & SoundFX siap');
+  </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.DiStreamStudio" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#131417</item>
+        <item name="android:navigationBarColor">#131417</item>
+    </style>
+</resources>

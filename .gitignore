@@ -1,0 +1,29 @@
+# Strictly exclude environment secrets and keys
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+local.properties
+
+# Android & Gradle build outputs
+.gradle/
+build/
+app/build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# IDE files
+.idea/
+*.iml
+.DS_Store
+
+# Node.js backend dependencies
+distream-backend/node_modules/
+node_modules/
+npm-debug.log*

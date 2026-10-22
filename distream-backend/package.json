@@ -1,0 +1,14 @@
+{
+  "name": "distream-studio-backend",
+  "version": "3.0.0",
+  "description": "DiStream Studio Event Bus, SaaS Subscription Licensing (Pakasir QRIS + Resend), Cloud Simulcast & Failover Server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/saas_and_server.test.js"
+  },
+  "dependencies": {
+    "tiktok-live-connector": "^2.5.0",
+    "ws": "^8.22.0"
+  }
+}

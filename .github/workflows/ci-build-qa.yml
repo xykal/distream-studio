@@ -1,0 +1,135 @@
+name: DiStream Studio CI/CD, QA & Release APK
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  backend-qa-and-security-audit:
+    name: Backend SaaS QA & Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify Zero Tracked Secrets (.env Guard)
+        run: |
+          if git ls-files --error-unmatch .env distream-backend/.env >/dev/null 2>&1; then
+            echo "CRITICAL: .env file must never be tracked in Git!"
+            exit 1
+          fi
+          echo "Security Audit Passed: Zero .env secret files tracked in Git."
+
+      - name: Setup Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Backend Dependencies & Run Syntax Validation
+        working-directory: distream-backend
+        run: |
+          npm install --no-audit --no-fund
+          node --check saasEngine.js
+          node --check server.js
+
+      - name: Run Automated SaaS, QRIS Billing, Security & WebSocket Test Suite
+        working-directory: distream-backend
+        run: npm test
+
+  android-build-qa-and-apk:
+    name: Android Unit Test, Lint QA & Signed APK Build
+    needs: backend-qa-and-security-audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle 8.11.1 Cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Ensure Executable Gradle Wrapper
+        run: chmod +x ./gradlew
+
+      - name: Run JUnit 4 Comprehensive Unit Tests (SaaS, HMAC, PCM Audio DSP, Security)
+        run: ./gradlew testDebugUnitTest --info --stacktrace
+
+      - name: Run Android Static Analysis & Lint Verification
+        run: ./gradlew lintDebug --stacktrace
+
+      - name: Build Debug & R8-Minified Release APKs
+        run: ./gradlew assembleDebug assembleRelease --stacktrace
+
+      - name: Sign & Cryptographically Verify Release APK (v2/v3 APK Signature)
+        run: |
+          BUILD_TOOLS_DIR=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -n 1)
+          echo "Using Android Build-Tools: $BUILD_TOOLS_DIR"
+
+          keytool -genkeypair -v \
+            -keystore distream-ci-release.jks \
+            -alias distream_key \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass distream2026 \
+            -keypass distream2026 \
+            -dname "CN=DiStream Studio, OU=Mobile Broadcast, O=XyVerse, L=Jakarta, ST=DKI, C=ID"
+
+          mkdir -p release-artifacts
+          cp app/build/outputs/apk/debug/app-debug.apk release-artifacts/DiStreamStudio-v3.0.0-debug.apk
+
+          "$BUILD_TOOLS_DIR/zipalign" -v -p 4 \
+            app/build/outputs/apk/release/app-release-unsigned.apk \
+            release-artifacts/aligned-release.apk
+
+          "$BUILD_TOOLS_DIR/apksigner" sign \
+            --ks distream-ci-release.jks \
+            --ks-key-alias distream_key \
+            --ks-pass pass:distream2026 \
+            --key-pass pass:distream2026 \
+            --out release-artifacts/DiStreamStudio-v3.0.0-release-signed.apk \
+            release-artifacts/aligned-release.apk
+
+          "$BUILD_TOOLS_DIR/apksigner" verify --verbose release-artifacts/DiStreamStudio-v3.0.0-release-signed.apk
+          rm -f distream-ci-release.jks release-artifacts/aligned-release.apk
+          ls -lh release-artifacts/
+
+      - name: Upload Compiled APKs & QA Reports to GitHub Actions
+        uses: actions/upload-artifact@v4
+        with:
+          name: DiStreamStudio-v3.0.0-APKs-and-QA-Reports
+          path: |
+            release-artifacts/*.apk
+            app/build/reports/tests/testDebugUnitTest/
+            app/build/reports/lint-results-debug.html
+
+      - name: Publish Latest Release APK on Main Push
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v3.0.0"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" \
+              release-artifacts/DiStreamStudio-v3.0.0-release-signed.apk \
+              release-artifacts/DiStreamStudio-v3.0.0-debug.apk \
+              --clobber
+          else
+            gh release create "$TAG" \
+              release-artifacts/DiStreamStudio-v3.0.0-release-signed.apk \
+              release-artifacts/DiStreamStudio-v3.0.0-debug.apk \
+              --title "DiStream Studio v3.0.0 — SaaS Creator Broadcast Platform" \
+              --notes "Automated CI/CD build verified by Backend QA, JUnit 4 Unit Tests, Android Lint, and APK v2/v3 Signature Check."
+          fi

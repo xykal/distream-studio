@@ -1,1495 +1,1830 @@
 <!DOCTYPE html>
 <html lang="id" data-theme="dark">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DiStream Studio v3.0 — Creator Broadcast &amp; SaaS Platform</title>
-  <style>
-    :root[data-theme="dark"] {
-      --page-bg: #0f1115;
-      --app-bg: #15181e;
-      --surface-1: #1d2028;
-      --surface-2: #262a34;
-      --surface-hover: #2f3440;
-      --border: rgba(255, 255, 255, 0.08);
-      --border-strong: rgba(255, 255, 255, 0.15);
-      --text-primary: #f4f6fa;
-      --text-secondary: #9ba3b2;
-      --text-muted: #6b7280;
-      --shadow-phone: 0 28px 70px rgba(0, 0, 0, 0.55);
-      --stage-backdrop: #101217;
-    }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DiStream Studio v4.0 — Real Live Broadcast & Custom WYSIWYG Workbench</title>
+<style>
+  :root, [data-theme="dark"] {
+    --bg-app: #090b10;
+    --bg-panel: #11151e;
+    --bg-card: #171d29;
+    --bg-elev: #202838;
+    --line: #273146;
+    --line-strong: #3b4b6b;
+    --txt: #f8fafc;
+    --txt-sub: #cbd5e1;
+    --txt-muted: #7f8ea3;
+    --accent: #3b82f6;
+    --accent-2: #60a5fa;
+    --danger: #f43f5e;
+    --ok: #10b981;
+    --gold: #f59e0b;
+    --on-accent: #ffffff;
+  }
+  [data-theme="light"] {
+    --bg-app: #eef2f8;
+    --bg-panel: #ffffff;
+    --bg-card: #f4f7fc;
+    --bg-elev: #e5ecf6;
+    --line: #d4deee;
+    --line-strong: #adbed9;
+    --txt: #0f172a;
+    --txt-sub: #334155;
+    --txt-muted: #64748b;
+    --accent: #2563eb;
+    --accent-2: #1d4ed8;
+    --danger: #e11d48;
+    --ok: #059669;
+    --gold: #d97706;
+    --on-accent: #ffffff;
+  }
+  [data-theme="gold"] {
+    --bg-app: #0b0a08;
+    --bg-panel: #14120e;
+    --bg-card: #1d1912;
+    --bg-elev: #2a2419;
+    --line: #3b3222;
+    --line-strong: #635131;
+    --txt: #fefce8;
+    --txt-sub: #e7e2d3;
+    --txt-muted: #a39b88;
+    --accent: #d99b26;
+    --accent-2: #fbbf24;
+    --danger: #f43f5e;
+    --ok: #10b981;
+    --gold: #fbbf24;
+    --on-accent: #141006;
+  }
 
-    :root[data-theme="light"] {
-      --page-bg: #e9edf3;
-      --app-bg: #f4f6fa;
-      --surface-1: #ffffff;
-      --surface-2: #eef1f6;
-      --surface-hover: #e3e7ef;
-      --border: rgba(15, 23, 42, 0.08);
-      --border-strong: rgba(15, 23, 42, 0.16);
-      --text-primary: #111827;
-      --text-secondary: #4b5563;
-      --text-muted: #6b7280;
-      --shadow-phone: 0 24px 60px rgba(15, 23, 42, 0.14);
-      --stage-backdrop: #dfe4ec;
-    }
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  input, textarea, select { user-select: text; font-family: inherit; }
+  body {
+    background: var(--bg-app);
+    color: var(--txt);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
 
-    :root {
-      --brand: #2563eb;
-      --brand-hover: #1d4ed8;
-      --brand-soft: rgba(37, 99, 235, 0.14);
-      --vip-gold: #d97706;
-      --vip-gold-soft: rgba(217, 119, 6, 0.16);
-      --live-red: #ef4444;
-      --live-red-soft: rgba(239, 68, 68, 0.14);
-      --good-green: #10b981;
-      --warn-amber: #f59e0b;
-      --overlay-accent: #2563eb;
-      --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
-      --radius-lg: 16px;
-      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
-    }
+  /* Custom Top Studio Header */
+  .topbar {
+    height: 56px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--line);
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 60;
+  }
+  .brand-row { display: flex; align-items: center; gap: 10px; }
+  .logo-mark {
+    width: 32px; height: 32px; border-radius: 9px;
+    background: linear-gradient(135deg, var(--accent), var(--danger));
+    display: grid; place-items: center; position: relative;
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.25);
+  }
+  .brand-title { font-size: 15px; font-weight: 800; letter-spacing: -0.2px; }
+  .tier-pill {
+    font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 6px;
+    background: var(--bg-elev); color: var(--accent-2); border: 1px solid var(--line-strong);
+  }
+  .tier-pill.pro { background: rgba(245, 158, 11, 0.18); color: var(--gold); border-color: var(--gold); }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+  .top-actions { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 
-    body {
-      background: var(--page-bg);
-      color: var(--text-primary);
-      font-family: var(--font-sans);
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      gap: 28px;
-      padding: 24px;
-      transition: background 0.3s var(--ease-spring), color 0.3s var(--ease-spring);
-      -webkit-font-smoothing: antialiased;
-    }
+  /* Tactile Non-Material Studio Buttons */
+  .ds-btn {
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, var(--bg-elev), var(--bg-card));
+    color: var(--txt);
+    border-radius: 10px;
+    padding: 7px 12px;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: transform 0.12s cubic-bezier(.2,.9,.3,1.2), border-color 0.15s, background 0.15s;
+    white-space: nowrap;
+  }
+  .ds-btn:hover { border-color: var(--line-strong); }
+  .ds-btn:active { transform: scale(0.955); }
+  .ds-btn.active {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: var(--accent);
+    color: var(--accent-2);
+  }
+  .ds-btn.primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: var(--on-accent);
+    border-color: rgba(255,255,255,0.2);
+  }
+  .ds-btn.danger {
+    background: linear-gradient(135deg, var(--danger), #be123c);
+    color: #fff;
+    border-color: rgba(255,255,255,0.2);
+  }
+  .ds-btn.gold {
+    background: linear-gradient(135deg, #d97706, #fbbf24);
+    color: #141006;
+    border-color: rgba(255,255,255,0.3);
+  }
+  .ds-btn.sm { padding: 5px 9px; font-size: 11px; border-radius: 8px; }
 
-    svg {
-      width: 17px;
-      height: 17px;
-      stroke: currentColor;
-      fill: none;
-      stroke-width: 1.9;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      flex-shrink: 0;
-    }
+  /* 3-Column OBS x TikTok Studio Workbench */
+  .workbench {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 315px minmax(360px, 1fr) 340px;
+    gap: 12px;
+    padding: 12px;
+    align-items: start;
+  }
+  @media (max-width: 1120px) {
+    .workbench { grid-template-columns: 1fr; }
+  }
 
-    button {
-      font-family: inherit;
-      cursor: pointer;
-      transition: transform 0.16s var(--ease-spring), background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-    }
-    button:active { transform: scale(0.96); }
+  .dock-col { display: flex; flex-direction: column; gap: 11px; }
+  .panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 13px;
+  }
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 9px; gap: 8px;
+  }
+  .panel-title {
+    font-size: 11.5px; font-weight: 800; letter-spacing: 0.4px;
+    text-transform: uppercase; color: var(--txt-sub);
+  }
+  .sub-note { font-size: 11px; color: var(--txt-muted); line-height: 1.4; margin-bottom: 8px; }
 
-    .phone-frame {
-      width: 428px;
-      height: 884px;
-      background: var(--app-bg);
-      border: 1px solid var(--border-strong);
-      border-radius: 34px;
-      box-shadow: var(--shadow-phone);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      flex-shrink: 0;
-      position: relative;
-      transition: background 0.3s var(--ease-spring);
-    }
+  /* Center Interactive WYSIWYG Stage Container */
+  .stage-shell {
+    background: #05070b;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+  }
+  .stage-toolbar {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 7px;
+  }
+  .btn-group { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
 
-    .app-header {
-      padding: 13px 16px;
-      background: var(--surface-1);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
+  .stage-viewport-wrap {
+    width: 100%;
+    min-height: 440px;
+    display: grid;
+    place-items: center;
+    position: relative;
+    padding: 6px;
+  }
 
-    .brand-group { display: flex; align-items: center; gap: 10px; }
-    .brand-logo {
-      width: 34px;
-      height: 34px;
-      border-radius: 10px;
-      background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #ffffff;
-      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.28);
-    }
-    .brand-title-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-    .brand-name { font-size: 15px; font-weight: 700; letter-spacing: -0.02em; }
+  /* Dynamic Aspect Ratio Stage (9:16, 16:9, 4:5, 1:1) */
+  .live-stage {
+    position: relative;
+    background: linear-gradient(145deg, #0f253e 0%, #191338 55%, #09101f 100%);
+    border-radius: 14px;
+    border: 2px solid var(--stage-accent, #3b82f6);
+    overflow: hidden;
+    box-shadow: 0 22px 60px rgba(0,0,0,0.65);
+    transition: width 0.28s cubic-bezier(.2,.85,.3,1), height 0.28s cubic-bezier(.2,.85,.3,1);
+    touch-action: none;
+  }
+  .live-stage.ratio-9-16 { width: 292px; height: 519px; }
+  .live-stage.ratio-16-9 { width: min(100%, 640px); aspect-ratio: 16 / 9; height: auto; }
+  .live-stage.ratio-4-5  { width: 356px; height: 445px; }
+  .live-stage.ratio-1-1  { width: 410px; height: 410px; }
 
-    .tier-pill {
-      font-size: 10px;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: var(--brand-soft);
-      color: var(--brand);
-      border: 1px solid rgba(37, 99, 235, 0.3);
-      cursor: pointer;
-    }
-    .tier-pill.pro {
-      background: var(--vip-gold-soft);
-      color: var(--vip-gold);
-      border-color: rgba(217, 119, 6, 0.45);
-    }
+  #bgMediaVideo, #bgMediaImg {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; pointer-events: none; display: none;
+  }
+  .mirror-x { transform: scaleX(-1); }
 
-    .status-chip {
-      font-size: 10px;
-      font-weight: 600;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: var(--surface-2);
-      color: var(--text-secondary);
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .status-chip.live { background: var(--live-red); color: #ffffff; }
-    .live-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-    .status-chip.live .live-dot { animation: softPulse 1.4s infinite; }
-    @keyframes softPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .stage-center-label {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    text-align: center; pointer-events: none; z-index: 1; padding: 18px;
+  }
+  .slate-tag { font-size: 10px; font-weight: 800; letter-spacing: 1px; color: #93c5fd; margin-bottom: 5px; }
+  .slate-main { font-size: 17px; font-weight: 800; color: #fff; line-height: 1.3; }
+  .slate-sub { font-size: 11px; color: rgba(255,255,255,0.68); margin-top: 4px; }
 
-    .telemetry-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
-    .header-actions { display: flex; align-items: center; gap: 6px; }
-    .icon-btn {
-      width: 33px; height: 33px; border-radius: 9px;
-      background: var(--surface-2); border: 1px solid var(--border);
-      color: var(--text-secondary); display: flex; align-items: center; justify-content: center;
-    }
-    .icon-btn:hover { background: var(--surface-hover); color: var(--text-primary); }
-    .icon-btn.active { background: var(--brand-soft); color: var(--brand); border-color: rgba(37,99,235,0.35); }
-    .icon-btn.warn { background: rgba(245, 158, 11, 0.16); color: var(--warn-amber); border-color: rgba(245,158,11,0.4); }
+  /* Guides */
+  .grid-guide {
+    position: absolute; inset: 0; pointer-events: none; z-index: 4; display: none;
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,0.16) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.16) 1px, transparent 1px);
+    background-size: 33.333% 33.333%;
+  }
+  .safe-zone-guide { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
+  .sz-right {
+    position: absolute; right: 0; top: 35%; width: 16%; height: 48%;
+    background: rgba(244, 63, 94, 0.16); border-left: 1px dashed rgba(244, 63, 94, 0.65);
+    display: grid; place-items: center; font-size: 8.5px; font-weight: 700; color: #fda4af; writing-mode: vertical-rl;
+  }
+  .sz-bottom {
+    position: absolute; left: 0; bottom: 0; width: 84%; height: 21%;
+    background: rgba(59, 130, 246, 0.14); border-top: 1px dashed rgba(96, 165, 250, 0.65);
+    padding: 5px 8px; font-size: 8.5px; font-weight: 700; color: #93c5fd;
+  }
 
-    /* Live Canvas Stage */
-    .stage-container {
-      height: 214px;
-      background: var(--stage-backdrop);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px 14px;
-      position: relative;
-    }
+  /* Draggable & Scalable Stage Nodes */
+  .stage-node {
+    position: absolute;
+    z-index: 10;
+    cursor: grab;
+    transform-origin: top left;
+    touch-action: none;
+  }
+  .stage-node:active { cursor: grabbing; }
+  .stage-node.selected {
+    outline: 2px solid #60a5fa;
+    outline-offset: 3px;
+    border-radius: 10px;
+  }
+  .stage-node .resize-knob {
+    display: none;
+    position: absolute;
+    right: -8px; bottom: -8px;
+    width: 15px; height: 15px;
+    border-radius: 50%;
+    background: #3b82f6;
+    border: 2px solid #ffffff;
+    cursor: nwse-resize;
+    z-index: 25;
+  }
+  .stage-node.selected .resize-knob { display: block; }
+  .stage-node.locked { cursor: lock; opacity: 0.92; }
 
-    .canvas-viewport {
-      height: 100%;
-      aspect-ratio: 9 / 16;
-      background: #141926;
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      position: relative;
-      overflow: hidden;
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
-      transition: aspect-ratio 0.35s var(--ease-spring), width 0.35s var(--ease-spring);
-      cursor: pointer;
-      user-select: none;
-    }
-    .canvas-viewport.landscape { height: auto; width: 92%; aspect-ratio: 16 / 9; }
+  .widget-card {
+    background: var(--ov-bg, rgba(16, 20, 29, 0.86));
+    color: var(--ov-txt, #f8fafc);
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 11px;
+    padding: 8px 11px;
+    backdrop-filter: blur(8px);
+  }
+  .goal-track { width: 100%; height: 6px; background: rgba(148,163,184,0.28); border-radius: 99px; overflow: hidden; margin-top: 5px; }
+  .goal-fill { height: 100%; background: var(--stage-accent, #3b82f6); transition: width 0.25s; }
 
-    .scene-visual {
-      position: absolute; inset: 0;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      text-align: center; padding: 12px; color: #ffffff;
-    }
-    .scene-gameplay { background: radial-gradient(circle at 30% 25%, #233862 0%, #162036 55%, #0e1320 100%); }
-    .scene-starting { background: linear-gradient(155deg, #1b2845 0%, #141720 100%); }
-    .scene-brb { background: linear-gradient(155deg, #2d261e 0%, #16171d 100%); }
-    .scene-camera { background: radial-gradient(circle at 50% 35%, #1e352f 0%, #121820 100%); }
-    .scene-privacy { background: #111318; }
+  .pip-cam-box {
+    width: 92px; height: 122px; border-radius: 13px; overflow: hidden;
+    border: 2px solid var(--stage-accent, #3b82f6);
+    background: #0d131f; display: grid; place-items: center; position: relative;
+  }
+  .pip-cam-box video { width: 100%; height: 100%; object-fit: cover; }
 
-    .scene-label-main { font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.9); }
-    .scene-label-sub { font-size: 9px; color: rgba(255, 255, 255, 0.55); margin-top: 2px; }
+  .watermark-pill {
+    position: absolute; top: 10px; right: 10px; z-index: 12; pointer-events: none;
+    background: rgba(15, 23, 42, 0.84); border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 999px; padding: 4px 10px; font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; gap: 6px; color: #f8fafc;
+  }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #f43f5e; }
 
-    .ov-card {
-      background: rgba(20, 23, 30, 0.84);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      color: #f9fafb;
-      transition: all 0.25s var(--ease-spring);
-    }
-    .canvas-viewport[data-frame="light"] .ov-card {
-      background: rgba(255, 255, 255, 0.92);
-      border-color: rgba(15, 23, 42, 0.14);
-      color: #111827;
-    }
-    .canvas-viewport[data-frame="gold"] .ov-card {
-      background: rgba(24, 20, 12, 0.88);
-      border-color: rgba(245, 158, 11, 0.55);
-      color: #fef3c7;
-    }
+  .stage-alert-pop {
+    position: absolute; left: 50%; top: 44%; transform: translate(-50%, -50%) scale(0.92);
+    background: rgba(15, 23, 42, 0.95); border: 1.5px solid var(--gold);
+    border-radius: 14px; padding: 12px 18px; text-align: center; z-index: 30;
+    opacity: 0; pointer-events: none; transition: all 0.25s cubic-bezier(.2,.9,.3,1.1);
+    min-width: 210px; box-shadow: 0 18px 40px rgba(0,0,0,0.65);
+  }
+  .stage-alert-pop.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 
-    .ov-watermark {
-      position: absolute; top: 6px; right: 6px;
-      padding: 2px 6px; border-radius: 99px;
-      font-size: 6.8px; font-weight: 700; z-index: 6;
-    }
+  /* FLOATING HUD INTERACTIVE OVERLAY SIMULATOR ("TES MELAYANG") */
+  .floating-hud-capsule {
+    position: fixed;
+    left: 26px;
+    top: 76px;
+    z-index: 95;
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    touch-action: none;
+  }
+  .floating-hud-capsule.visible { display: flex; }
+  .fh-bar {
+    background: rgba(14, 18, 27, 0.94);
+    border: 1px solid rgba(255,255,255,0.22);
+    border-radius: 14px;
+    padding: 7px 10px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 16px 38px rgba(0,0,0,0.65);
+    cursor: grab;
+  }
+  .fh-bubble {
+    display: none;
+    width: 56px; height: 56px; border-radius: 999px;
+    background: linear-gradient(135deg, #111827, #1e3a8a);
+    border: 2px solid #60a5fa;
+    color: #fff; font-weight: 900; font-size: 12px;
+    place-items: center; cursor: pointer;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+  }
+  .fh-pip {
+    width: 108px; height: 142px; border-radius: 13px; overflow: hidden;
+    background: #0e1525; border: 2px solid #3b82f6;
+    display: grid; place-items: center; color: #94a3b8; font-size: 10px; text-align: center;
+  }
+  .fh-pip video { width: 100%; height: 100%; object-fit: cover; }
 
-    .ov-goal {
-      position: absolute; top: 24px; left: 7px; right: 7px;
-      padding: 4px 6px; border-radius: 7px; font-size: 7px; font-weight: 600; z-index: 4;
-    }
-    .ov-goal-head { display: flex; justify-content: space-between; margin-bottom: 2px; }
-    .ov-goal-track { height: 4px; background: rgba(128,128,128,0.28); border-radius: 99px; overflow: hidden; }
-    .ov-goal-fill { height: 100%; width: 35%; background: var(--overlay-accent); transition: width 0.35s var(--ease-spring); }
+  /* Custom Form Controls */
+  .field-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+  .field-label { font-size: 11px; font-weight: 700; color: var(--txt-sub); display: flex; justify-content: space-between; }
+  .ds-input {
+    width: 100%; background: var(--bg-card); color: var(--txt);
+    border: 1px solid var(--line-strong); border-radius: 9px;
+    padding: 8px 10px; font-size: 12px; outline: none;
+  }
+  .ds-input:focus { border-color: var(--accent); }
 
-    .ov-love-pill {
-      position: absolute; top: 53px; right: 7px;
-      padding: 4px 7px; border-radius: 8px;
-      display: flex; align-items: center; gap: 4px;
-      font-size: 7px; font-weight: 700; z-index: 5;
-    }
-    .heart-icon-svg { width: 11px; height: 11px; fill: #ef4444; stroke: none; animation: heartBeat 1.3s ease-in-out infinite; }
-    @keyframes heartBeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.22); } }
+  /* Custom Studio Fader Range */
+  input[type="range"].ds-range {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 7px; border-radius: 99px;
+    background: var(--bg-elev); outline: none; cursor: pointer;
+  }
+  input[type="range"].ds-range::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--accent); border: 2px solid #fff; cursor: pointer;
+  }
 
-    .floating-heart {
-      position: absolute; bottom: 28px; right: 16px;
-      width: 14px; height: 14px; pointer-events: none; z-index: 12;
-      animation: floatUp 1.15s var(--ease-spring) forwards;
-    }
-    @keyframes floatUp {
-      0% { opacity: 0.95; transform: translateY(0) scale(0.75); }
-      100% { opacity: 0; transform: translateY(-95px) translateX(-10px) scale(1.25); }
-    }
+  /* Custom Spring Toggle Switch */
+  .toggle-line {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--line);
+    border-radius: 10px; margin-bottom: 6px; cursor: pointer;
+  }
+  .sw-pill {
+    width: 40px; height: 22px; border-radius: 99px; background: var(--bg-elev);
+    border: 1px solid var(--line-strong); position: relative; flex-shrink: 0; transition: background 0.18s;
+  }
+  .sw-pill::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+    border-radius: 50%; background: #fff; transition: transform 0.18s cubic-bezier(.2,.9,.3,1.2);
+  }
+  .sw-pill.on { background: var(--accent); border-color: var(--accent-2); }
+  .sw-pill.on::after { transform: translateX(18px); }
 
-    .ov-custom-text {
-      position: absolute; z-index: 6; font-size: 7.5px; font-weight: 700;
-      padding: 3px 6px; border-radius: 6px; white-space: nowrap; max-width: 90%; overflow: hidden;
-    }
+  .sfx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+  .vu-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; font-size: 10px; font-family: monospace; color: var(--txt-muted); }
+  .vu-track { flex: 1; height: 7px; background: var(--bg-elev); border-radius: 99px; overflow: hidden; }
+  .vu-fill { height: 100%; width: 8%; border-radius: 99px; transition: width 0.08s linear; }
 
-    .ov-alert-card {
-      position: absolute; left: 8px; right: 8px; top: 40%;
-      padding: 7px 8px; border-radius: 9px; border: 1.5px solid var(--overlay-accent);
-      text-align: center; z-index: 10; opacity: 0; transform: translateY(-8px) scale(0.94);
-      pointer-events: none; box-shadow: 0 10px 24px rgba(0,0,0,0.45);
-      transition: all 0.28s var(--ease-spring);
-    }
-    .ov-alert-card.visible { opacity: 1; transform: translateY(0) scale(1); }
+  .swatch-row { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+  .swatch {
+    width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
+    border: 2px solid rgba(255,255,255,0.25);
+  }
+  .swatch.active { outline: 2px solid var(--accent-2); outline-offset: 2px; }
 
-    .ov-ticker {
-      position: absolute; left: 6px; right: 6px; bottom: 5px; height: 15px;
-      border-radius: 5px; padding: 0 6px; display: flex; align-items: center;
-      overflow: hidden; font-size: 7px; font-weight: 600; white-space: nowrap; z-index: 4;
-    }
-    .ov-ticker span { display: inline-block; padding-left: 100%; animation: tickerMove 12s linear infinite; }
-    @keyframes tickerMove { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-
-    .ov-safezone {
-      position: absolute; left: 0; bottom: 0; width: 75%; height: 28%;
-      background: rgba(245, 158, 11, 0.14); border-top: 1px dashed #f59e0b; border-right: 1px dashed #f59e0b;
-      padding: 3px 5px; font-size: 6.5px; font-weight: 700; color: #fde68a; display: none; z-index: 8;
-    }
-
-    .stage-helper-pill {
-      position: absolute; right: 12px; bottom: 10px;
-      background: var(--surface-1); border: 1px solid var(--border);
-      border-radius: 8px; padding: 4px 8px; font-size: 10px; color: var(--text-secondary);
-    }
-
-    .scene-strip {
-      display: flex; gap: 6px; padding: 9px 14px;
-      background: var(--surface-1); border-bottom: 1px solid var(--border);
-      overflow-x: auto; scrollbar-width: none;
-    }
-    .scene-strip::-webkit-scrollbar { display: none; }
-    .scene-btn {
-      padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border);
-      background: var(--surface-2); color: var(--text-secondary);
-      font-size: 11px; font-weight: 600; white-space: nowrap;
-    }
-    .scene-btn.active { background: var(--brand); border-color: var(--brand); color: #ffffff; }
-
-    .tab-scroll { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
-    .tab-pane { display: none; flex-direction: column; gap: 12px; animation: fadeSlideUp 0.24s var(--ease-spring); }
-    .tab-pane.active { display: flex; }
-    @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-
-    .card {
-      background: var(--surface-1); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: 13px;
-    }
-    .card-title {
-      font-size: 13px; font-weight: 700; color: var(--text-primary);
-      margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;
-    }
-    .card-badge {
-      font-size: 10px; font-weight: 700; color: var(--brand);
-      background: var(--brand-soft); padding: 2px 8px; border-radius: 999px;
-    }
-    .card-badge.gold { color: var(--vip-gold); background: var(--vip-gold-soft); }
-
-    .plan-card {
-      background: var(--surface-2);
-      border: 1px solid var(--border-strong);
-      border-radius: 13px;
-      padding: 12px;
-      margin-bottom: 8px;
-      position: relative;
-      transition: border-color 0.2s ease, transform 0.2s ease;
-    }
-    .plan-card.popular {
-      border: 1.5px solid var(--brand);
-      box-shadow: 0 8px 22px rgba(37, 99, 235, 0.16);
-    }
-    .plan-card.active-tier {
-      border: 1.5px solid var(--good-green);
-    }
-
-    .stat-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 8px; }
-    .stat-mini {
-      background: var(--surface-2); border: 1px solid var(--border);
-      border-radius: 10px; padding: 8px 9px;
-    }
-
-    .chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
-    .chip {
-      padding: 6px 11px; border-radius: 9px; border: 1px solid var(--border);
-      background: var(--surface-2); color: var(--text-secondary); font-size: 11px; font-weight: 600;
-    }
-    .chip.active { background: var(--brand); border-color: var(--brand); color: #ffffff; }
-
-    .field-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px; display: block; }
-    .input-box {
-      width: 100%; background: var(--surface-2); border: 1px solid var(--border-strong);
-      border-radius: 10px; padding: 8px 11px; color: var(--text-primary);
-      font-family: inherit; font-size: 12px; outline: none;
-    }
-    .input-box:focus { border-color: var(--brand); }
-
-    .btn-primary {
-      background: var(--brand); border: none; color: #ffffff;
-      border-radius: 10px; padding: 8px 13px; font-size: 11.5px; font-weight: 600;
-      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    }
-    .btn-primary:hover { background: var(--brand-hover); }
-    .btn-secondary {
-      background: var(--surface-2); border: 1px solid var(--border-strong); color: var(--text-primary);
-      border-radius: 10px; padding: 8px 11px; font-size: 11px; font-weight: 600;
-      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
-    }
-
-    .sfx-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-    .sfx-pad {
-      background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px;
-      padding: 11px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px;
-      color: var(--text-primary); position: relative;
-    }
-    .sfx-pad.locked { opacity: 0.72; }
-    .sfx-pad.playing { background: var(--brand); border-color: var(--brand); color: #ffffff; transform: scale(0.95); }
-    .sfx-pad.censor.playing { background: var(--live-red); border-color: var(--live-red); }
-    .sfx-pad-label { font-size: 10px; font-weight: 600; text-align: center; }
-
-    .vu-strip { display: grid; grid-template-columns: repeat(22, 1fr); gap: 3px; margin: 7px 0; }
-    .vu-seg { height: 7px; border-radius: 99px; background: var(--surface-2); transition: background 0.08s ease; }
-    input[type="range"] { width: 100%; accent-color: var(--brand); cursor: pointer; }
-
-    .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; }
-    .layer-info-title { font-size: 12px; font-weight: 600; }
-    .layer-info-sub { font-size: 10.5px; color: var(--text-secondary); margin-top: 1px; }
-
-    .switch-pill {
-      width: 40px; height: 22px; border-radius: 999px;
-      background: var(--surface-2); border: 1px solid var(--border-strong);
-      position: relative; flex-shrink: 0; transition: background 0.22s var(--ease-spring);
-    }
-    .switch-pill::after {
-      content: ""; position: absolute; top: 2px; left: 2px;
-      width: 16px; height: 16px; border-radius: 50%; background: #ffffff;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.3); transition: transform 0.22s var(--ease-spring);
-    }
-    .switch-pill.on { background: var(--brand); border-color: var(--brand); }
-    .switch-pill.on::after { transform: translateX(18px); }
-
-    .bottom-dock { background: var(--surface-1); border-top: 1px solid var(--border); }
-    .go-live-bar { display: flex; gap: 8px; padding: 9px 14px; }
-    .square-action {
-      width: 44px; height: 44px; border-radius: 12px; background: var(--surface-2);
-      border: 1px solid var(--border-strong); color: var(--text-primary);
-      display: flex; align-items: center; justify-content: center;
-    }
-    .square-action.muted, .square-action.recording {
-      background: var(--live-red-soft); border-color: var(--live-red); color: var(--live-red);
-    }
-    .main-stream-btn {
-      flex: 1; height: 44px; border-radius: 12px; border: none;
-      background: var(--brand); color: #ffffff; font-size: 13.5px; font-weight: 700;
-      display: flex; align-items: center; justify-content: center; gap: 7px;
-    }
-    .main-stream-btn.live { background: var(--live-red); }
-
-    .nav-bar { display: grid; grid-template-columns: repeat(5, 1fr); padding: 4px 6px 9px; border-top: 1px solid var(--border); }
-    .nav-item {
-      background: transparent; border: none; color: var(--text-secondary);
-      padding: 6px 2px; border-radius: 10px; display: flex; flex-direction: column;
-      align-items: center; gap: 3px; font-size: 10px; font-weight: 600;
-    }
-    .nav-item.active { color: var(--brand); background: var(--brand-soft); }
-
-    /* Modals (QRIS Pakasir & PIN Security) */
-    .modal-backdrop {
-      position: absolute; inset: 0; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(5px);
-      display: none; align-items: center; justify-content: center; padding: 20px; z-index: 40;
-    }
-    .modal-backdrop.open { display: flex; }
-    .modal-box {
-      width: 100%; background: var(--surface-1); border: 1px solid var(--border-strong);
-      border-radius: 18px; padding: 18px; box-shadow: 0 20px 50px rgba(0,0,0,0.45);
-      animation: fadeSlideUp 0.2s var(--ease-spring);
-    }
-
-    .side-showcase { width: 396px; display: flex; flex-direction: column; gap: 18px; }
-    @media (max-width: 880px) {
-      body { flex-direction: column; align-items: center; }
-      .side-showcase { width: 428px; }
-    }
-    .ingame-mockup {
-      height: 310px; border-radius: 22px;
-      background: linear-gradient(145deg, #1b2842 0%, #121726 100%);
-      border: 1px solid var(--border-strong); position: relative; overflow: hidden;
-      padding: 16px; box-shadow: var(--shadow-phone);
-    }
-    .floating-bar {
-      position: relative; display: inline-flex; align-items: center; gap: 6px;
-      background: rgba(20, 22, 28, 0.9); backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 12px;
-      padding: 7px 11px; color: #f9fafb; cursor: grab; user-select: none;
-    }
-    .f-pill {
-      background: #282d38; border: 1px solid rgba(255,255,255,0.12);
-      color: #f9fafb; border-radius: 8px; padding: 4px 8px; font-size: 10px; font-weight: 600;
-    }
-    .f-pill:hover { background: var(--brand); }
-    .f-pill.stop { background: #ef4444; border-color: #ef4444; }
-  </style>
+  /* Modal Scrim */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.76);
+    display: none; place-items: center; z-index: 120; padding: 16px;
+  }
+  .modal-backdrop.open { display: grid; }
+  .modal-card {
+    width: min(500px, 100%); max-height: 90vh; overflow-y: auto;
+    background: var(--bg-panel); border: 1.5px solid var(--line-strong);
+    border-radius: 20px; padding: 18px;
+  }
+  .plan-box {
+    border: 1px solid var(--line); background: var(--bg-card);
+    border-radius: 12px; padding: 11px 13px; margin-bottom: 8px;
+    display: flex; justify-content: space-between; align-items: center; cursor: pointer;
+  }
+  .plan-box.sel { border-color: var(--accent); background: rgba(59,130,246,0.13); }
+</style>
 </head>
 <body>
 
-  <div class="phone-frame">
+<!-- TOP CUSTOM CREATOR STUDIO BAR -->
+<header class="topbar">
+  <div class="brand-row">
+    <div class="logo-mark">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4">
+        <rect x="3" y="4" width="7" height="16" rx="3.5" fill="rgba(255,255,255,0.25)"/>
+        <circle cx="16.5" cy="12" r="4.5" fill="#fff"/>
+      </svg>
+    </div>
+    <div>
+      <div style="display:flex;align-items:center;gap:7px;">
+        <span class="brand-title">DiStream Studio v4.0</span>
+        <span id="tierBadge" class="tier-pill">STARTER GRATIS</span>
+      </div>
+      <div id="topStatusSub" style="font-size:10.5px;color:var(--txt-muted);">Kanvas Interaktif Siap — Klik &amp; geser elemen langsung di panggung</div>
+    </div>
+  </div>
 
-    <!-- QRIS PAKASIR CHECKOUT MODAL -->
-    <div id="qrisModal" class="modal-backdrop">
-      <div class="modal-box">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <span style="font-size:15px;font-weight:700;" id="qrisPlanTitle">Checkout QRIS Pakasir</span>
-          <span class="card-badge gold">Otomatis</span>
-        </div>
-        <div id="qrisSummaryText" style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;"></div>
+  <div class="top-actions">
+    <button class="ds-btn active" id="btnToggleFloating" onclick="toggleFloatingHud()">Tes Melayang: Aktif</button>
+    <button class="ds-btn" onclick="popOutBrowserPiP()">Jendela PiP OS</button>
+    <button class="ds-btn" id="btnRecordVideo" onclick="toggleLocalVideoRecord()">Rekam Video Lokal</button>
+    <button class="ds-btn" id="btnCycleTheme" onclick="cycleStudioTheme()">Tema: Dark</button>
+    <button class="ds-btn gold" onclick="openSaasModal()">Upgrade Pro (QRIS)</button>
+    <button class="ds-btn danger" id="btnMasterLive" onclick="toggleMasterBroadcast()">MULAI SIARAN LIVE</button>
+  </div>
+</header>
 
-        <!-- Clean Generated QRIS Code Card -->
-        <div style="background:#ffffff;border-radius:12px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:12px;color:#111827;">
-          <div style="font-size:11px;font-weight:800;letter-spacing:0.04em;">QRIS — GO-PAY / OVO / DANA / BCA / BRI</div>
-          <svg id="qrisMatrixSvg" viewBox="0 0 120 120" style="width:136px;height:136px;stroke:none;fill:#111827;"></svg>
-          <div id="qrisOrderIdLabel" style="font-size:10px;color:#4b5563;font-family:monospace;">ORDER: DST-MONTHLY-994120</div>
-        </div>
+<!-- FLOATING IN-GAME HUD CAPSULE ("TES MELAYANG" — GESER BEBAS DI ATAS LAYAR!) -->
+<div id="floatingCapsule" class="floating-hud-capsule visible">
+  <div id="fhBubble" class="fh-bubble" onclick="expandFloatingBubble()" title="Klik untuk membuka kapsul kontrol">DS LIVE</div>
+  <div id="fhExpanded">
+    <div id="fhDragHandle" class="fh-bar">
+      <button class="ds-btn sm" onclick="collapseFloatingBubble()">Kecilkan</button>
+      <span id="fhStatusText" style="font-size:11px;font-weight:700;color:#f8fafc;padding:0 5px;">Melayang • Layar Game • 36C</span>
+      <button class="ds-btn sm" id="fhMuteBtn" onclick="toggleMicMute()">Mic On</button>
+      <button class="ds-btn sm active" id="fhCamBtn" onclick="toggleFloatingPipCam()">Facecam</button>
+      <button class="ds-btn sm" onclick="cycleFloatingOpacity()" id="fhAlphaBtn">96%</button>
+      <button class="ds-btn sm" onclick="selectScene('PRIVACY_SHIELD')">Privasi</button>
+      <button class="ds-btn sm danger" onclick="toggleFloatingHud()">Tutup</button>
+    </div>
+    <div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;">
+      <button class="ds-btn sm" onclick="selectScene('GAMEPLAY')">Game</button>
+      <button class="ds-btn sm" onclick="selectScene('IRL_CAMERA')">Kamera</button>
+      <button class="ds-btn sm" onclick="selectScene('STARTING_SOON')">Mulai</button>
+      <button class="ds-btn sm" onclick="selectScene('INTERMISSION_BRB')">BRB</button>
+      <button class="ds-btn sm" onclick="playSfx('APPLAUSE')">Tepuk</button>
+      <button class="ds-btn sm" onclick="playSfx('AIRHORN')">Horn</button>
+      <button class="ds-btn sm" onclick="playSfx('COIN_ALERT')">Koin</button>
+      <button class="ds-btn sm danger" onmousedown="setCensorTone(true)" onmouseup="setCensorTone(false)" onmouseleave="setCensorTone(false)" ontouchstart="setCensorTone(true)" ontouchend="setCensorTone(false)">Tahan 1kHz</button>
+      <button class="ds-btn sm" onclick="cycleFloatingCamSize()" id="fhSizeBtn">Ukuran M</button>
+    </div>
+    <div id="fhPipBox" class="fh-pip" style="margin-top:6px;">
+      <video id="fhPipVideo" autoplay playsinline muted class="mirror-x" style="display:none;"></video>
+      <span id="fhPipPlaceholder">Facecam Melayang<br/>(Klik Nyalakan Kamera)</span>
+    </div>
+  </div>
+</div>
 
-        <div style="display:flex;gap:8px;justify-content:flex-end;">
-          <button class="btn-secondary" onclick="closeQrisModal()">Batal</button>
-          <button class="btn-primary" onclick="completeQrisSettlement()">Simulasi Bayar Lunas</button>
-        </div>
+<!-- 3-COLUMN STUDIO WORKBENCH -->
+<main class="workbench">
+
+  <!-- KOLOM KIRI: SCENE, SUMBER HARDWARE ASLI & SEMUA PRESET LIVE -->
+  <section class="dock-col">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">1. Sumber Kamera &amp; Layar Asli</span>
+      </div>
+      <p class="sub-note">Hubungkan webcam depan/belakang, tangkap jendela game PC/tab secara nyata, atau muat gambar/video latar sendiri.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:7px;">
+        <button class="ds-btn primary" id="btnRealCam" onclick="toggleRealWebcam()">Nyalakan Kamera</button>
+        <button class="ds-btn" id="btnRealScreen" onclick="startRealScreenShare()">Tangkap Layar</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+        <button class="ds-btn sm" onclick="toggleCameraMirror()">Mirror Kamera</button>
+        <label class="ds-btn sm" style="cursor:pointer;">
+          Upload Latar
+          <input type="file" accept="image/*,video/*" style="display:none" onchange="handleBgUpload(event)" />
+        </label>
       </div>
     </div>
 
-    <!-- PIN SECURITY MODAL -->
-    <div id="pinModal" class="modal-backdrop">
-      <div class="modal-box">
-        <div style="font-size:15px;font-weight:700;margin-bottom:6px;">Konfirmasi Hentikan Siaran</div>
-        <div style="font-size:12px;color:var(--text-secondary);line-height:1.5;margin-bottom:12px;">
-          Masukkan PIN Keamanan (default: <strong>1234</strong>) agar siaran tidak terputus akibat salah sentuh.
-        </div>
-        <input id="pinModalInput" type="password" class="input-box" value="1234" style="margin-bottom:12px;" />
-        <div style="display:flex;gap:8px;justify-content:flex-end;">
-          <button class="btn-secondary" onclick="document.getElementById('pinModal').classList.remove('open')">Batal</button>
-          <button class="btn-primary" style="background:var(--live-red);" onclick="confirmPinAndStop()">Hentikan Live</button>
-        </div>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">2. Scene Siaran Instan</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;" id="sceneButtonsWrap">
+        <button class="ds-btn active" data-scene="GAMEPLAY" onclick="selectScene('GAMEPLAY')">Layar Game</button>
+        <button class="ds-btn" data-scene="IRL_CAMERA" onclick="selectScene('IRL_CAMERA')">Kamera Penuh</button>
+        <button class="ds-btn" data-scene="STARTING_SOON" onclick="selectScene('STARTING_SOON')">Segera Mulai</button>
+        <button class="ds-btn" data-scene="INTERMISSION_BRB" onclick="selectScene('INTERMISSION_BRB')">Istirahat BRB</button>
+        <button class="ds-btn danger" style="grid-column:span 2;" data-scene="PRIVACY_SHIELD" onclick="selectScene('PRIVACY_SHIELD')">Layar Privasi Anti-OTP / Blackout</button>
       </div>
     </div>
 
-    <!-- HEADER -->
-    <div class="app-header">
-      <div class="brand-group">
-        <div class="brand-logo">
-          <svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:#ffffff;stroke-width:2.3;">
-            <path d="M7 5v14" /><path d="M7 5a7 7 0 0 1 0 14" /><path d="M16.5 8.5a5 5 0 0 1 0 7" style="opacity:0.8;" />
-          </svg>
-        </div>
-        <div>
-          <div class="brand-title-row">
-            <span class="brand-name">DiStream</span>
-            <span id="headerTierBadge" class="tier-pill" onclick="openTabByIndex(2)">Upgrade Pro</span>
-            <span id="headerStatusBadge" class="status-chip">
-              <span class="live-dot"></span><span id="headerStatusText">Siap</span>
-            </span>
-          </div>
-          <div class="telemetry-sub">
-            <span id="bitrateReadout">0 kbps</span> &bull; <span id="codecBadgeText">720p60 H.264</span> &bull; <span id="tempReadout">36&deg;C</span>
-          </div>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">3. Preset Live &amp; Encoder Manual</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
+        <button class="ds-btn sm" id="pre_540" onclick="applyQualityPreset('540p', 960, 540, 30, 1800, false)">SD 540p • 30fps • 1.8 Mbps (Hemat Sinyal)</button>
+        <button class="ds-btn sm" id="pre_720_30" onclick="applyQualityPreset('720p30', 1280, 720, 30, 2800, false)">HD 720p • 30fps • 2.8 Mbps (Stabil Harian)</button>
+        <button class="ds-btn sm active" id="pre_720_60" onclick="applyQualityPreset('720p60', 1280, 720, 60, 4200, false)">HD 720p • 60fps • 4.2 Mbps (Standar Mabar)</button>
+        <button class="ds-btn sm" id="pre_1080_60" onclick="applyQualityPreset('1080p60', 1920, 1080, 60, 6500, true)">FHD 1080p • 60fps • 6.5 Mbps HEVC [Pro]</button>
+      </div>
+
+      <div class="field-row">
+        <div class="field-label"><span>Bitrate Video Manual</span><span id="lblBitrate">4.2 Mbps (4200 kbps)</span></div>
+        <input type="range" class="ds-range" min="1200" max="10000" step="100" value="4200" id="rngBitrate" oninput="updateEncoderManual()" />
+      </div>
+
+      <div class="field-row">
+        <div class="field-label"><span>Frame Rate (FPS) &amp; Codec GPU</span></div>
+        <div class="btn-group">
+          <button class="ds-btn sm" onclick="setFps(24)" id="fps_24">24</button>
+          <button class="ds-btn sm" onclick="setFps(30)" id="fps_30">30</button>
+          <button class="ds-btn sm" onclick="setFps(45)" id="fps_45">45</button>
+          <button class="ds-btn sm active" onclick="setFps(60)" id="fps_60">60 FPS</button>
+          <button class="ds-btn sm active" id="codec_h264" onclick="setCodec('H.264')">H.264</button>
+          <button class="ds-btn sm" id="codec_hevc" onclick="setCodec('H.265')">H.265 Pro</button>
         </div>
       </div>
 
-      <div class="header-actions">
-        <button id="btnSafeZone" class="icon-btn" onclick="toggleSafeZone()" title="Area Chat TikTok">
-          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg>
-        </button>
-        <button id="btnHeaderShield" class="icon-btn" onclick="togglePrivacyShield()" title="Layar Privasi">
-          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        </button>
-        <button class="icon-btn" onclick="toggleTheme()" title="Mode Gelap / Terang">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-        </button>
+      <div class="field-row" style="margin-top:6px;">
+        <div class="field-label"><span>Color Grading &amp; Filter Kamera Live</span><span id="lblGrade">Vivid Game</span></div>
+        <div class="btn-group" style="margin-bottom:7px;">
+          <button class="ds-btn sm" onclick="setColorGrade('natural', 100, 100, 100, 'Natural')">Natural</button>
+          <button class="ds-btn sm active" onclick="setColorGrade('vivid', 104, 110, 132, 'Vivid Game')">Vivid</button>
+          <button class="ds-btn sm" onclick="setColorGrade('crisp', 102, 126, 108, 'Crisp Contrast')">Crisp</button>
+          <button class="ds-btn sm" onclick="setColorGrade('warm', 105, 104, 118, 'Warm IRL')">Warm</button>
+          <button class="ds-btn sm" onclick="setColorGrade('mono', 100, 115, 0, 'Monokrom')">Mono</button>
+        </div>
+        <div class="field-label"><span>Kecerahan &amp; Kontras Halus</span><span id="lblBright">104% / 110%</span></div>
+        <input type="range" class="ds-range" min="70" max="145" value="104" id="rngBright" oninput="applyVisualFilters()" />
+      </div>
+
+      <div class="field-row" style="margin-top:6px;">
+        <div class="field-label"><span>Judul Siaran / Slate</span></div>
+        <input class="ds-input" id="inpHeadline" value="Mabar Santai Push Rank Malam Ini" oninput="refreshStageBackdrop()" />
+      </div>
+    </div>
+  </section>
+
+  <!-- KOLOM TENGAH: PANGGUNG PREVIEW WYSIWYG LIVE (GESER, UBAH UKURAN, ORIENTASI & SAFE ZONE) -->
+  <section class="stage-shell">
+    <div class="stage-toolbar">
+      <div class="btn-group">
+        <span style="font-size:11px;font-weight:800;color:var(--txt-muted);margin-right:4px;">ORIENTASI:</span>
+        <button class="ds-btn sm active" id="ori_9_16" onclick="setOrientation('9-16', 'TikTok Potret 9:16')">9:16 TikTok</button>
+        <button class="ds-btn sm" id="ori_16_9" onclick="setOrientation('16-9', 'Lanskap Game/YT 16:9')">16:9 YouTube/Game</button>
+        <button class="ds-btn sm" id="ori_4_5" onclick="setOrientation('4-5', 'Feed Kreator 4:5')">4:5 Feed</button>
+        <button class="ds-btn sm" id="ori_1_1" onclick="setOrientation('1-1', 'Kotak Studio 1:1')">1:1 Kotak</button>
+      </div>
+      <div class="btn-group">
+        <button class="ds-btn sm active" id="btnSafeZone" onclick="toggleSafeZone()">Safe Zone TikTok</button>
+        <button class="ds-btn sm" id="btnGridGuide" onclick="toggleGridGuide()">Grid 3x3</button>
+        <button class="ds-btn sm" onclick="resetCanvasLayout()">Reset Posisi</button>
       </div>
     </div>
 
-    <!-- LIVE CANVAS STAGE -->
-    <div class="stage-container">
-      <div id="liveViewport" class="canvas-viewport" data-frame="clean" onclick="triggerLoveTap(22, true)">
-        <div id="sceneBg" class="scene-visual scene-gameplay">
-          <div id="sceneTitleText" class="scene-label-main">Layar Game Aktif</div>
-          <div id="sceneSubText" class="scene-label-sub">Klik layar = Simulasi Tap Love</div>
-        </div>
+    <div class="stage-viewport-wrap">
+      <div id="liveStage" class="live-stage ratio-9-16">
+        <video id="bgMediaVideo" autoplay playsinline muted></video>
+        <img id="bgMediaImg" alt="Background" />
 
-        <div id="ovWatermark" class="ov-card ov-watermark">DiStream Free</div>
-
-        <div id="ovGoal" class="ov-card ov-goal">
-          <div class="ov-goal-head"><span>Target Gift</span><span id="ovGoalNums">350 / 1000</span></div>
-          <div class="ov-goal-track"><div id="ovGoalFill" class="ov-goal-fill"></div></div>
-        </div>
-
-        <div id="ovLoveWidget" class="ov-card ov-love-pill">
-          <svg class="heart-icon-svg" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        <div id="stageCenterInfo" class="stage-center-label">
           <div>
-            <div id="ovLoveMain" style="line-height:1.1;">Tap-Tap Love</div>
-            <div id="ovLoveSub" style="font-size:6.5px;opacity:0.75;">1.420 suka</div>
+            <div class="slate-tag" id="slateTag">KANVAS GAME / LAYAR UTAMA</div>
+            <div class="slate-main" id="slateMain">Mabar Santai Push Rank Malam Ini</div>
+            <div class="slate-sub" id="slateSub">1080x1920 • 60fps • 4.2 Mbps • Klik &amp; geser semua layer bebas</div>
           </div>
         </div>
 
-        <div id="customTextCanvasLayer"></div>
-
-        <div id="ovAlertToast" class="ov-card ov-alert-card">
-          <div id="ovAlertCat" style="font-size:7px;font-weight:700;color:var(--overlay-accent);">Dukungan Masuk</div>
-          <div id="ovAlertSender" style="font-size:10px;font-weight:700;margin:1px 0;">@sultan_arena</div>
-          <div id="ovAlertMsg" style="font-size:7.5px;opacity:0.85;">Terima kasih!</div>
+        <div id="gridGuideEl" class="grid-guide"></div>
+        <div id="safeZoneEl" class="safe-zone-guide">
+          <div class="sz-right">AREA TOMBOL TIKTOK</div>
+          <div class="sz-bottom">AREA KOMENTAR PENONTON TIKTOK LIVE</div>
         </div>
 
-        <div id="ovTicker" class="ov-card ov-ticker">
-          <span id="ovTickerText">Selamat datang di live stream — Bantu tap-tap layar &amp; mabar tulis ID di komentar</span>
+        <div id="watermarkEl" class="watermark-pill">
+          <span class="live-dot"></span>
+          <span id="wmText">DiStream Free</span>
         </div>
 
-        <div id="ovSafeZone" class="ov-safezone">Area Komentar TikTok</div>
+        <!-- Dynamic Draggable & Scalable Nodes Container -->
+        <div id="nodesMount"></div>
+
+        <!-- On-Stage Donation / Gift Alert Toast -->
+        <div id="stageAlertPop" class="stage-alert-pop">
+          <div id="popCat" style="font-size:10px;font-weight:800;color:var(--gold);letter-spacing:0.6px;">SAWERIA MASUK</div>
+          <div id="popUser" style="font-size:15px;font-weight:800;color:#fff;margin-top:3px;">Kak Raka</div>
+          <div id="popMsg" style="font-size:11.5px;color:#cbd5e1;margin-top:3px;">Semangat push rank malam ini!</div>
+        </div>
       </div>
-
-      <div id="simulcastStageBadge" class="stage-helper-pill">Single RTMP</div>
     </div>
 
-    <!-- SCENE SWITCHER -->
-    <div class="scene-strip">
-      <button class="scene-btn active" onclick="selectScene('GAMEPLAY', false, this)">Layar Game</button>
-      <button class="scene-btn" onclick="selectScene('STARTING', false, this)">Segera Mulai</button>
-      <button class="scene-btn" onclick="selectScene('BRB', true, this)">Istirahat (Pro)</button>
-      <button class="scene-btn" onclick="selectScene('CAMERA', true, this)">Kamera OIS (Pro)</button>
-      <button id="scenePrivacyBtn" class="scene-btn" onclick="selectScene('PRIVACY', false, this)">Layar Privasi</button>
+    <!-- Preset Bingkai Cepat & Tambah Elemen ke Panggung -->
+    <div style="width:100%;display:flex;flex-wrap:wrap;gap:6px;justify-content:space-between;align-items:center;">
+      <div class="btn-group">
+        <span style="font-size:11px;font-weight:700;color:var(--txt-muted);">BINGKAI:</span>
+        <button class="ds-btn sm active" onclick="setFramePreset('#3b82f6', false, this)">Clean Blue</button>
+        <button class="ds-btn sm" onclick="setFramePreset('#0ea5e9', false, this)">Soft Glass</button>
+        <button class="ds-btn sm" onclick="setFramePreset('#f43f5e', false, this)">Esports Red</button>
+        <button class="ds-btn sm" onclick="setFramePreset('#d97706', false, this)">Royal Gold</button>
+        <button class="ds-btn sm" onclick="setFramePreset('#18181b', true, this)">Minimal Light</button>
+      </div>
+      <div class="btn-group">
+        <button class="ds-btn sm primary" onclick="addNewTextNode()">+ Tambah Layer Teks</button>
+        <label class="ds-btn sm" style="cursor:pointer;">
+          + Stiker / Logo PNG
+          <input type="file" accept="image/*" style="display:none" onchange="handleStickerUpload(event)" />
+        </label>
+        <button class="ds-btn sm" onclick="triggerTestGiftEvent()">Tes Gift Paus</button>
+        <button class="ds-btn sm gold" onclick="triggerTestDonationTts()">Tes Saweria + Suara TTS</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- KOLOM KANAN: INSPECTOR LAYER TERPILIH, SOUNDFX 48KHZ + MIC ASLI, BRANKAS & CLOUD PRO -->
+  <section class="dock-col">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">4. Inspector Layer Terpilih</span>
+        <span id="inspSelectedBadge" style="font-size:10.5px;font-family:monospace;color:var(--accent-2);">GOAL</span>
+      </div>
+      <p class="sub-note">Klik elemen apa pun di panggung tengah (atau klik dua kali untuk edit teks cepat), lalu atur presisi di sini.</p>
+
+      <div id="layerChipsRow" class="btn-group" style="margin-bottom:9px;"></div>
+
+      <div class="field-row">
+        <div class="field-label"><span>Isi Teks / Judul Widget</span></div>
+        <input class="ds-input" id="inspText" oninput="applyInspectorEdit()" />
+      </div>
+      <div class="field-row">
+        <div class="field-label"><span>Sub-teks / Progres</span></div>
+        <input class="ds-input" id="inspSubtext" oninput="applyInspectorEdit()" />
+      </div>
+      <div class="field-row">
+        <div class="field-label"><span>Skala Ukuran Elemen</span><span id="lblNodeScale">100%</span></div>
+        <input type="range" class="ds-range" id="inspScale" min="55" max="200" value="100" oninput="applyInspectorEdit()" />
+      </div>
+      <div class="field-row">
+        <div class="field-label"><span>Opasitas Layer</span><span id="lblNodeAlpha">100%</span></div>
+        <input type="range" class="ds-range" id="inspOpacity" min="25" max="100" value="100" oninput="applyInspectorEdit()" />
+      </div>
+
+      <div class="field-row">
+        <div class="field-label"><span>Warna Teks / Aksen Widget</span></div>
+        <div class="swatch-row">
+          <div class="swatch" style="background:#ffffff" onclick="pickNodeColor('#ffffff')"></div>
+          <div class="swatch" style="background:#60a5fa" onclick="pickNodeColor('#60a5fa')"></div>
+          <div class="swatch" style="background:#fbbf24" onclick="pickNodeColor('#fbbf24')"></div>
+          <div class="swatch" style="background:#34d399" onclick="pickNodeColor('#34d399')"></div>
+          <div class="swatch" style="background:#fb7185" onclick="pickNodeColor('#fb7185')"></div>
+          <div class="swatch" style="background:#c084fc" onclick="pickNodeColor('#c084fc')"></div>
+        </div>
+      </div>
+
+      <div class="btn-group" style="margin-top:8px;">
+        <button class="ds-btn sm" onclick="toggleSelectedVisible()" id="btnVisLayer">Sembunyikan</button>
+        <button class="ds-btn sm" onclick="bringSelectedForward()">Layer Naik</button>
+        <button class="ds-btn sm" onclick="duplicateSelectedNode()">Duplikat</button>
+        <button class="ds-btn sm danger" onclick="deleteSelectedNode()">Hapus</button>
+      </div>
     </div>
 
-    <!-- WORKSPACE TABS -->
-    <div class="tab-scroll">
-
-      <!-- TAB 0: OVERLAY, LOVE & CUSTOM TEXT -->
-      <div id="tabPane0" class="tab-pane active">
-        <div class="card">
-          <div class="card-title">
-            <span>Preset Tap-Tap Love &amp; Tema Bingkai</span>
-            <span class="card-badge">Visual</span>
-          </div>
-          <div class="chip-row" style="margin-bottom:9px;">
-            <button class="chip active" onclick="setLovePreset('TAP_LOVE', this)">Tap-Tap Love</button>
-            <button class="chip" onclick="setLovePreset('TARGET_LIKE', this)">Target 5K Like</button>
-            <button class="chip" onclick="setLovePreset('TOP_SUPPORTER', this)">Top Supporter</button>
-          </div>
-          <div class="chip-row" style="margin-bottom:8px;">
-            <button class="chip active" onclick="setFrameTheme('clean', '#2563eb', false, this)">Clean Dark</button>
-            <button class="chip" onclick="setFrameTheme('light', '#2563eb', false, this)">Minimal Light</button>
-            <button class="chip" onclick="setFrameTheme('gold', '#d97706', true, this)">Royal Gold VIP</button>
-          </div>
-          <div class="toggle-row">
-            <div>
-              <div class="layer-info-title">Sembunyikan Watermark DiStream</div>
-              <div id="wmSubHint" class="layer-info-sub">Tersedia mulai Paket Harian (Rp 5.000)</div>
-            </div>
-            <button id="swHideWatermark" class="switch-pill" onclick="toggleCleanWatermark()"></button>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">
-            <span>Teks Kustom di Layar</span>
-            <span id="customTextQuotaBadge" class="card-badge">1 / 1 teks</span>
-          </div>
-          <div style="display:flex;gap:7px;">
-            <input id="newCustomTextInput" class="input-box" placeholder="Tulis ID Mabar / Pengumuman..." />
-            <button class="btn-primary" onclick="addCustomTextItem()">Tambah</button>
-          </div>
-          <div id="customTextListContainer"></div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Simulasi Event Penonton Real-Time</div>
-          <div style="display:flex;gap:7px;">
-            <button class="btn-secondary" style="flex:1;" onclick="triggerLoveTap(180, true)">+180 Love</button>
-            <button class="btn-secondary" style="flex:1;" onclick="simulateDonation()">Tes Saweria + TTS</button>
-            <button class="btn-primary" style="flex:1;" onclick="simulateGift()">Tes Gift</button>
-          </div>
-        </div>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">5. Audio Mixer &amp; SoundFX 48kHz Asli</span>
+        <button class="ds-btn sm primary" id="btnRealMic" onclick="toggleRealMicrophone()">Aktifkan Mic Asli</button>
       </div>
+      <div class="vu-row"><span>MIC </span><div class="vu-track"><div id="vuMic" class="vu-fill" style="background:var(--ok);"></div></div></div>
+      <div class="vu-row"><span>GAME</span><div class="vu-track"><div id="vuGame" class="vu-fill" style="background:var(--accent);width:42%;"></div></div></div>
+      <div class="vu-row"><span>SFX </span><div class="vu-track"><div id="vuSfx" class="vu-fill" style="background:var(--gold);width:4%;"></div></div></div>
 
-      <!-- TAB 1: SOUNDFX DECK & MIXER -->
-      <div id="tabPane1" class="tab-pane">
-        <div class="card">
-          <div class="card-title">
-            <span>SoundFX Audio Deck</span>
-            <span class="card-badge">Web Audio Real-Time</span>
-          </div>
-          <div class="sfx-grid">
-            <button class="sfx-pad" onclick="playRealSfx('APPLAUSE', false, this)">
-              <svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-              <span class="sfx-pad-label">Tepuk Tangan</span>
-            </button>
-            <button class="sfx-pad" onclick="playRealSfx('AIRHORN', false, this)">
-              <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
-              <span class="sfx-pad-label">Hype Horn</span>
-            </button>
-            <button class="sfx-pad" onclick="playRealSfx('COIN', false, this)">
-              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10"/></svg>
-              <span class="sfx-pad-label">Koin Masuk</span>
-            </button>
-            <button class="sfx-pad censor" onclick="playRealSfx('CENSOR', false, this)">
-              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-              <span class="sfx-pad-label">Sensor 1kHz</span>
-            </button>
-            <button class="sfx-pad pro-pad locked" onclick="playRealSfx('VICTORY', true, this)">
-              <svg viewBox="0 0 24 24"><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/><path d="M4 22h16"/></svg>
-              <span class="sfx-pad-label">Victory (Pro)</span>
-            </button>
-            <button class="sfx-pad pro-pad locked" onclick="playRealSfx('RIMSHOT', true, this)">
-              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg>
-              <span class="sfx-pad-label">Komedi (Pro)</span>
-            </button>
-            <button class="sfx-pad pro-pad locked" onclick="playRealSfx('BASS_DROP', true, this)">
-              <svg viewBox="0 0 24 24"><path d="M2 12h4l3-9 5 18 3-9h5"/></svg>
-              <span class="sfx-pad-label">Bass Drop (Pro)</span>
-            </button>
-            <button class="sfx-pad pro-pad locked" onclick="playRealSfx('RISER', true, this)">
-              <svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
-              <span class="sfx-pad-label">Riser (Pro)</span>
-            </button>
-          </div>
-
-          <div style="margin-top:12px;">
-            <div style="display:flex;justify-content:space-between;font-size:11.5px;font-weight:600;">
-              <span>Level Audio SoundFX</span><span id="sfxVolLabel">85%</span>
-            </div>
-            <div id="vuSfx" class="vu-strip"></div>
-            <input type="range" min="0" max="150" value="85" oninput="sfxGainPercent=this.value;document.getElementById('sfxVolLabel').textContent=this.value+'%'" />
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Audio Mixer &amp; Penjernih Suara DSP</div>
-          <div style="font-size:11.5px;font-weight:600;">Mikrofon Streamer</div>
-          <div id="vuMic" class="vu-strip"></div>
-          <div style="font-size:11.5px;font-weight:600;margin-top:6px;">Suara Internal Game</div>
-          <div id="vuGame" class="vu-strip"></div>
-        </div>
+      <div class="sfx-grid" style="margin-top:9px;">
+        <button class="ds-btn sm" onclick="playSfx('APPLAUSE')">Tepuk Tangan</button>
+        <button class="ds-btn sm" onclick="playSfx('AIRHORN')">Hype Horn</button>
+        <button class="ds-btn sm" onclick="playSfx('COIN_ALERT')">Koin Masuk</button>
+        <button class="ds-btn sm" onclick="playSfx('VICTORY')">Victory [Pro]</button>
+        <button class="ds-btn sm" onclick="playSfx('RIMSHOT')">Ba-Dum-Tss [Pro]</button>
+        <button class="ds-btn sm" onclick="playSfx('BOOM_DROP')">Bass Drop [Pro]</button>
       </div>
+      <button class="ds-btn danger" style="width:100%;margin-bottom:9px;"
+        onmousedown="setCensorTone(true)" onmouseup="setCensorTone(false)" onmouseleave="setCensorTone(false)"
+        ontouchstart="setCensorTone(true)" ontouchend="setCensorTone(false)">
+        TAHAN TOMBOL SENSOR SUARA 1KHZ
+      </button>
 
-      <!-- TAB 2: SAAS SUBSCRIPTION (HARIAN / MINGGUAN / BULANAN) & EXCLUSIVE VIP -->
-      <div id="tabPane2" class="tab-pane">
-        <div class="card">
-          <div class="card-title">
-            <span>Status Langganan &amp; Analitik Kreator</span>
-            <span id="saasStatusBadge" class="card-badge">Starter Gratis</span>
-          </div>
-          <div id="saasNoticeBox" style="font-size:11.5px;color:var(--good-green);font-weight:600;margin-bottom:6px;">
-            Tips: Ketik kode promo <strong>TRIALVIP</strong> untuk langsung aktif VIP gratis 24 jam, atau <strong>XYKAL50</strong> diskon 50%!
-          </div>
-          <div class="stat-grid-3">
-            <div class="stat-mini">
-              <div style="font-size:10px;color:var(--text-secondary);">Pendapatan Sesi</div>
-              <div id="statRevenueIdr" style="font-size:12px;font-weight:700;margin-top:2px;">Rp 0</div>
-            </div>
-            <div class="stat-mini">
-              <div style="font-size:10px;color:var(--text-secondary);">Peak Bitrate</div>
-              <div id="statPeakBitrate" style="font-size:12px;font-weight:700;margin-top:2px;">0 kbps</div>
-            </div>
-            <div class="stat-mini">
-              <div style="font-size:10px;color:var(--text-secondary);">Klip Replay 30s</div>
-              <div id="statReplayClips" style="font-size:12px;font-weight:700;margin-top:2px;">0 klip</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">
-            <span>Pilih Paket Langganan SaaS</span>
-            <span class="card-badge gold">QRIS Pakasir</span>
-          </div>
-          <span class="field-label">Kode Promo / Voucher Komunitas</span>
-          <input id="promoInputBox" class="input-box" placeholder="Coba ketik XYKAL50 atau TRIALVIP" style="margin-bottom:10px;" />
-
-          <!-- DAILY PLAN -->
-          <div id="cardPlanDAILY" class="plan-card">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <div>
-                <div style="font-size:13px;font-weight:700;">Pass Harian (24 Jam)</div>
-                <div style="font-size:12px;font-weight:700;color:var(--brand);">Rp 5.000 / hari</div>
-              </div>
-              <button class="btn-primary" onclick="openQrisCheckout('DAILY', 'Pass Harian', 5000)">Pilih Harian</button>
-            </div>
-            <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;line-height:1.45;">
-              Cocok untuk mabar / turnamen malam minggu: Hapus Watermark 100%, Unlock 1080p60 High-Bitrate + Codec H.265/HEVC hemat kuota, Full 8 SoundFX Deck, &amp; 5 Scene Penuh.
-            </div>
-          </div>
-
-          <!-- WEEKLY PLAN -->
-          <div id="cardPlanWEEKLY" class="plan-card">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <div>
-                <div style="font-size:13px;font-weight:700;">Creator Mingguan (7 Hari)</div>
-                <div style="font-size:12px;font-weight:700;color:var(--brand);">Rp 19.000 / minggu <span style="font-size:10px;color:var(--good-green);">(Hemat 46%)</span></div>
-              </div>
-              <button class="btn-primary" onclick="openQrisCheckout('WEEKLY', 'Creator Mingguan', 19000)">Pilih Mingguan</button>
-            </div>
-            <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;line-height:1.45;">
-              Semua fitur Harian + <strong>Cloud Multi-Stream Simulcast</strong> (1x Upload HP langsung live ke TikTok + YouTube + Twitch hemat kuota 66%), <strong>Instant Replay 30s</strong>, &amp; Teks Kustom Tanpa Batas.
-            </div>
-          </div>
-
-          <!-- MONTHLY PLAN -->
-          <div id="cardPlanMONTHLY" class="plan-card popular">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <div>
-                <div style="font-size:13px;font-weight:700;">Studio Pro Bulanan VIP (30 Hari)</div>
-                <div style="font-size:12px;font-weight:700;color:var(--vip-gold);">Rp 59.000 / bulan <span style="font-size:10px;color:var(--good-green);">(Paling Populer)</span></div>
-              </div>
-              <button class="btn-primary" onclick="openQrisCheckout('MONTHLY', 'Studio Pro VIP', 59000)">Pilih VIP</button>
-            </div>
-            <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;line-height:1.45;">
-              Semua fitur Mingguan + <strong>Suara Pintar TTS Pembaca Saweria/Gift Bahasa Indonesia</strong>, <strong>Cloud Anti-Disconnect Shield 60 Detik</strong> (Room TikTok anti-putus saat ganti sinyal), &amp; Analitik IDR Penuh.
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Kontrol Fitur Eksklusif Cloud Pro</div>
-          <div class="toggle-row">
-            <div>
-              <div class="layer-info-title">Cloud Multi-Stream Simulcast 3 Platform</div>
-              <div class="layer-info-sub">Live serentak TikTok + YouTube + Twitch hemat baterai</div>
-            </div>
-            <button id="swSimulcast" class="switch-pill" onclick="toggleProFeature('SIMULCAST', this)"></button>
-          </div>
-          <div class="toggle-row">
-            <div>
-              <div class="layer-info-title">Suara Pintar TTS Pembaca Donasi/Gift</div>
-              <div class="layer-info-sub">Membacakan pesan Saweria otomatis di dalam stream</div>
-            </div>
-            <button id="swSmartTts" class="switch-pill" onclick="toggleProFeature('TTS', this)"></button>
-          </div>
-          <div class="toggle-row">
-            <div>
-              <div class="layer-info-title">Cloud Anti-Disconnect Shield (60 Detik)</div>
-              <div class="layer-info-sub">Menjaga room live tidak mati saat jaringan drop</div>
-            </div>
-            <button id="swFailover" class="switch-pill" onclick="toggleProFeature('FAILOVER', this)"></button>
-          </div>
-          <button class="btn-secondary" style="width:100%;margin-top:8px;" onclick="saveReplay30s()">Simpan Replay Momen 30 Detik Terakhir</button>
-        </div>
+      <div class="field-row">
+        <div class="field-label"><span>Volume SoundFX Deck</span><span id="lblSfxVol">85%</span></div>
+        <input type="range" class="ds-range" id="rngSfxVol" min="15" max="130" value="85" oninput="document.getElementById('lblSfxVol').textContent=this.value+'%'" />
       </div>
-
-      <!-- TAB 3: KEAMANAN & SERVER RTMP -->
-      <div id="tabPane3" class="tab-pane">
-        <div class="card">
-          <div class="card-title">
-            <span>Vault Keamanan Stream Key (AES-256)</span>
-            <span class="card-badge">Hardware Keystore</span>
-          </div>
-          <span class="field-label">Server Ingest RTMP / RTMPS</span>
-          <input id="serverUrlInput" class="input-box" value="rtmps://push.rtmp.tiktok.com/live" style="margin-bottom:8px;" />
-          <span class="field-label">Stream Key Rahasia</span>
-          <div style="display:flex;gap:6px;">
-            <input id="streamKeyField" type="password" class="input-box" value="sk_live_distream_99481a0f82c" />
-            <button class="btn-secondary" onclick="const f=document.getElementById('streamKeyField');f.type=f.type==='password'?'text':'password'">Lihat</button>
-          </div>
-          <div style="display:flex;gap:7px;margin-top:10px;">
-            <button class="btn-primary" style="flex:1;background:var(--live-red);" onclick="activatePanicMode()">Darurat Panik (Kunci Layar+Mic)</button>
-            <button class="btn-secondary" onclick="toggleOrientationMode()">Rotasi 9:16 / 16:9</button>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Proteksi Privasi Berlapis</div>
-          <div class="toggle-row">
-            <div>
-              <div class="layer-info-title">Blokir Tangkapan Layar Aplikasi (FLAG_SECURE)</div>
-              <div class="layer-info-sub">Stream Key &amp; PIN tidak pernah terlihat di rekaman</div>
-            </div>
-            <button class="switch-pill on" onclick="this.classList.toggle('on')"></button>
-          </div>
-          <div class="toggle-row">
-            <div>
-              <div class="layer-info-title">Kunci PIN Sebelum Menghentikan Live</div>
-              <div class="layer-info-sub">Wajib verifikasi PIN (1234) saat tombol Akhiri ditekan</div>
-            </div>
-            <button class="switch-pill on" onclick="pinGuardEnabled=!pinGuardEnabled;this.classList.toggle('on')"></button>
-          </div>
-        </div>
-      </div>
-
-      <!-- TAB 4: LIVE CHAT & FILTER TEST -->
-      <div id="tabPane4" class="tab-pane">
-        <div class="card">
-          <div class="card-title">Uji Filter Keamanan Chat Otomatis</div>
-          <div style="display:flex;gap:6px;">
-            <input id="testChatInput" class="input-box" value="Gas mabar bang tanpa judol dan slot gacor!" />
-            <button class="btn-primary" onclick="sendFilteredChatTest()">Kirim</button>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-title">Riwayat Event Live Real-Time</div>
-          <div id="eventFeedContainer" style="display:flex;flex-direction:column;gap:6px;"></div>
-        </div>
-      </div>
-
     </div>
 
-    <!-- BOTTOM ACTION & 5-TAB NAVIGATION -->
-    <div class="bottom-dock">
-      <div class="go-live-bar">
-        <button id="btnBottomMute" class="square-action" onclick="toggleMicMute()" title="Bisu Mikrofon">
-          <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
-        </button>
-        <button id="btnBottomRec" class="square-action" onclick="toggleLocalRec()" title="Rekam MP4 Lokal">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg>
-        </button>
-        <button id="btnGoLiveMain" class="main-stream-btn" onclick="handleMainStreamAction()">
-          <span id="btnGoLiveLabel">Mulai Siaran Live</span>
-        </button>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">6. RTMP Vault &amp; Cloud Pro</span>
+      </div>
+      <div class="field-row">
+        <div class="field-label"><span>Server RTMP / RTMPS</span></div>
+        <input class="ds-input" id="inpRtmpUrl" value="rtmps://push.rtmp.tiktok.com/live" />
+      </div>
+      <div class="field-row">
+        <div class="field-label"><span>Stream Key Rahasia (AES-256 Masked)</span></div>
+        <input class="ds-input" type="password" id="inpStreamKey" value="sk_live_tiktok_9948271625" />
       </div>
 
-      <div class="nav-bar">
-        <button class="nav-item active" onclick="openTabByIndex(0)">
-          <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-          <span>Overlay</span>
+      <div class="toggle-line" onclick="toggleProSwitch('tts')">
+        <div>
+          <div style="font-size:12px;font-weight:700;">Smart TTS Pembaca Donasi (ID)</div>
+          <div style="font-size:10.5px;color:var(--txt-muted);">Suara otomatis Bahasa Indonesia</div>
+        </div>
+        <div id="sw_tts" class="sw-pill on"></div>
+      </div>
+      <div class="toggle-line" onclick="toggleProSwitch('simulcast')">
+        <div>
+          <div style="font-size:12px;font-weight:700;">Multi-Stream Cloud Simulcast</div>
+          <div style="font-size:10.5px;color:var(--txt-muted);">1x Upload ke TikTok + YouTube + Twitch</div>
+        </div>
+        <div id="sw_simulcast" class="sw-pill"></div>
+      </div>
+      <div class="toggle-line" onclick="toggleProSwitch('cleanwm')">
+        <div>
+          <div style="font-size:12px;font-weight:700;">Hapus Watermark DiStream</div>
+          <div style="font-size:10.5px;color:var(--txt-muted);">Feed bersih profesional [Mulai Rp 5.000]</div>
+        </div>
+        <div id="sw_cleanwm" class="sw-pill"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Hidden compositing canvas & video for Real Browser OS Picture-in-Picture & Real Local WebM Recording -->
+<canvas id="pipCompositeCanvas" width="720" height="1280" style="display:none;"></canvas>
+<video id="pipBridgeVideo" autoplay playsinline muted style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;"></video>
+
+<!-- MODAL REAL PAKASIR API v2 QRIS CHECKOUT -->
+<div id="saasModal" class="modal-backdrop" onclick="if(event.target===this)closeSaasModal()">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div>
+        <div style="font-size:16px;font-weight:800;">Langganan DiStream Pro — Pakasir QRIS v2</div>
+        <div id="cloudConnStatus" style="font-size:11px;color:var(--ok);">Terhubung ke Cloud API: distream-studio-cloud.vercel.app</div>
+      </div>
+      <button class="ds-btn sm" onclick="closeSaasModal()">Tutup</button>
+    </div>
+
+    <div id="checkoutStepSelect">
+      <div class="plan-box" data-plan="DAILY" onclick="pickPlan('DAILY', 5000)">
+        <div>
+          <div style="font-size:13.5px;font-weight:800;">Pass Harian (24 Jam)</div>
+          <div style="font-size:11px;color:var(--txt-muted);">Tanpa Watermark • 1080p60 HEVC • 8 Pad SoundFX Penuh</div>
+        </div>
+        <strong style="color:var(--accent-2);font-size:14px;">Rp 5.000</strong>
+      </div>
+      <div class="plan-box" data-plan="WEEKLY" onclick="pickPlan('WEEKLY', 19000)">
+        <div>
+          <div style="font-size:13.5px;font-weight:800;">Creator Mingguan (7 Hari)</div>
+          <div style="font-size:11px;color:var(--txt-muted);">Multi-Stream Simulcast 3 Platform • Replay 30s • Teks Unlimited</div>
+        </div>
+        <strong style="color:var(--accent-2);font-size:14px;">Rp 19.000</strong>
+      </div>
+      <div class="plan-box sel" data-plan="MONTHLY" onclick="pickPlan('MONTHLY', 59000)">
+        <div>
+          <div style="font-size:13.5px;font-weight:800;">Studio Pro Bulanan VIP (30 Hari)</div>
+          <div style="font-size:11px;color:var(--txt-muted);">Smart Indonesian TTS Donasi • Anti-Disconnect 60s • Tema Gold VIP</div>
+        </div>
+        <strong style="color:var(--gold);font-size:14px;">Rp 59.000</strong>
+      </div>
+
+      <div class="field-row" style="margin-top:10px;">
+        <div class="field-label"><span>Email Penerima Token Lisensi (Resend Email Otomatis)</span></div>
+        <input class="ds-input" id="chkEmail" placeholder="kreator@email.com (opsional)" />
+      </div>
+      <div class="field-row">
+        <div class="field-label"><span>Kode Promo (Opsional: XYKAL50 / HEMAT20)</span></div>
+        <input class="ds-input" id="chkPromo" placeholder="Kosongkan untuk QRIS normal" />
+      </div>
+
+      <button class="ds-btn gold" style="width:100%;padding:11px;margin-top:6px;" id="btnCreateInvoice" onclick="createLivePakasirOrder()">
+        BUAT INVOICE QRIS PAKASIR SEKARANG
+      </button>
+    </div>
+
+    <div id="checkoutStepPay" style="display:none;">
+      <div class="panel" style="background:var(--bg-card);text-align:center;">
+        <div id="invLiveTag" style="font-size:11.5px;font-weight:800;color:var(--ok);margin-bottom:4px;">INVOICE LIVE PAKASIR API v2</div>
+        <div id="invAmountLabel" style="font-size:18px;font-weight:900;margin-bottom:10px;">Rp 59.653</div>
+        <img id="qrisScannableImg" alt="QRIS Pakasir Scannable" style="display:none;width:220px;height:220px;background:#fff;padding:8px;border-radius:12px;margin:0 auto;" />
+        <canvas id="qrisMatrixCanvas" width="210" height="210" style="background:#fff;padding:10px;border-radius:12px;"></canvas>
+        <div id="invTxnMeta" style="font-size:11px;font-family:monospace;color:var(--txt-muted);margin-top:8px;"></div>
+        <p style="font-size:11px;color:var(--txt-sub);margin-top:8px;">
+          Status pembayaran dicek otomatis ke server Pakasir setiap 4.5 detik.
+        </p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:7px;margin-top:10px;">
+        <a id="btnOpenPakasirUrl" href="#" target="_blank" rel="noopener" class="ds-btn primary" style="text-decoration:none;padding:10px;">
+          Buka Halaman Pembayaran Resmi app.pakasir.com
+        </a>
+        <button class="ds-btn gold" style="padding:10px;" onclick="confirmPakasirPaymentNow()" id="btnVerifyNow">
+          Konfirmasi Pembayaran via API Pakasir
         </button>
-        <button class="nav-item" onclick="openTabByIndex(1)">
-          <svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-          <span>SoundFX</span>
-        </button>
-        <button class="nav-item" onclick="openTabByIndex(2)">
-          <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          <span>Pro SaaS</span>
-        </button>
-        <button class="nav-item" onclick="openTabByIndex(3)">
-          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          <span>Keamanan</span>
-        </button>
-        <button class="nav-item" onclick="openTabByIndex(4)">
-          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <span>Chat</span>
-        </button>
+        <button class="ds-btn sm" onclick="resetCheckoutView()">Pilih Paket Lain</button>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- RIGHT SIDEBAR: IN-GAME BAR + SAAS ARCHITECTURE -->
-  <div class="side-showcase">
-    <div class="ingame-mockup">
-      <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.68);margin-bottom:10px;">
-        Bar Melayang di Atas Game (Geser &amp; Bunyikan SoundFX Cepat)
-      </div>
-      <div id="draggableHud" class="floating-bar">
-        <span style="width:7px;height:7px;border-radius:50%;background:#10b981;"></span>
-        <span id="hudStatusText" style="font-size:11px;font-weight:700;margin-right:4px;">Siap &bull; 0.0 Mbps</span>
-        <button class="f-pill" onclick="toggleMicMute()">Mic</button>
-        <button class="f-pill" onclick="togglePrivacyShield()">Privasi</button>
-        <button class="f-pill" onclick="playRealSfx('AIRHORN', false, this)">Horn</button>
-        <button class="f-pill" style="background:#4c1d1d;" onclick="playRealSfx('CENSOR', false, this)">Sensor 1kHz</button>
-      </div>
-      <div id="miniGameChat" style="margin-top:10px;width:280px;background:rgba(16,18,24,0.82);border:1px solid rgba(255,255,255,0.12);border-radius:11px;padding:8px 10px;font-size:11px;color:#e5e7eb;display:flex;flex-direction:column;gap:4px;"></div>
-    </div>
+<script>
+const CLOUD_API_FALLBACK = "https://distream-studio-cloud.vercel.app";
+function resolveApiBase() {
+  if (location.protocol.startsWith("http") && (location.hostname === "localhost" || location.hostname.includes("e2b.app") || location.hostname.includes("vercel.app"))) {
+    return location.origin;
+  }
+  return CLOUD_API_FALLBACK;
+}
 
-    <div class="card">
-      <div class="card-title">
-        <span>Arsitektur SaaS &amp; Fitur Eksklusif v3.0</span>
-        <span class="card-badge gold">Verified CI/CD</span>
-      </div>
-      <div style="font-size:12px;color:var(--text-secondary);line-height:1.65;display:flex;flex-direction:column;gap:8px;">
-        <div><strong style="color:var(--text-primary);">1. Paket Harian (Rp 5.000) / Mingguan (Rp 19.000) / Bulanan VIP (Rp 59.000):</strong> Terintegrasi API QRIS <strong>Pakasir</strong> + kode promo <code>XYKAL50</code> &amp; <code>TRIALVIP</code> + token lisensi <code>HMAC-SHA256</code> anti-manipulasi.</div>
-        <div><strong style="color:var(--text-primary);">2. Cloud Multi-Stream Simulcast:</strong> HP cukup upload 1 stream hemat baterai, server mendistribusikan serentak ke TikTok LIVE + YouTube + Twitch.</div>
-        <div><strong style="color:var(--text-primary);">3. Smart TTS Pembaca Donasi &amp; Anti-Disconnect 60s:</strong> Membacakan pesan Saweria/Gift otomatis dalam Bahasa Indonesia &amp; menjaga room TikTok tidak putus saat sinyal drop.</div>
-      </div>
-    </div>
-  </div>
+const state = {
+  theme: "dark",
+  tier: "FREE",
+  licenseToken: "",
+  orientation: "9-16",
+  scene: "GAMEPLAY",
+  resW: 720,
+  resH: 1280,
+  fps: 60,
+  bitrateKbps: 4200,
+  codec: "H.264",
+  brightness: 104,
+  contrast: 110,
+  saturate: 132,
+  mirrorCam: true,
+  isLive: false,
+  liveSeconds: 0,
+  micMuted: false,
+  showSafeZone: true,
+  showGrid: false,
+  cleanWatermark: false,
+  ttsEnabled: true,
+  simulcast: false,
+  selectedPlan: "MONTHLY",
+  activeOrder: null,
+  selectedNodeId: "GOAL",
+  floatingOpen: true,
+  floatingCamOpen: true,
+  floatingOpacityIdx: 0,
+  floatingCamSizeIdx: 1,
+  nodes: [
+    { id: "GOAL", kind: "goal", title: "Target Gift Malam Ini", sub: "350 / 1000", pct: 35, x: 5, y: 4, scale: 1.0, opacity: 1.0, color: "#ffffff", visible: true, z: 2 },
+    { id: "LOVE", kind: "love", title: "Tap-Tap Love", sub: "2.450 suka", x: 56, y: 15, scale: 1.0, opacity: 1.0, color: "#ffffff", visible: true, z: 3 },
+    { id: "SUBATHON", kind: "sub", title: "Subathon 01:00:00", sub: "+60d / gift", x: 5, y: 17, scale: 1.0, opacity: 1.0, color: "#fbbf24", visible: true, z: 4 },
+    { id: "FACECAM", kind: "pip", title: "Kamera Kreator", sub: "Live PiP", x: 63, y: 55, scale: 1.0, opacity: 1.0, color: "#3b82f6", visible: true, z: 6 },
+    { id: "TXT_1", kind: "text", title: "ID Game: 82910422 (Open Mabar)", sub: "", x: 6, y: 27, scale: 1.0, opacity: 1.0, color: "#ffffff", visible: true, z: 5 },
+    { id: "TICKER", kind: "ticker", title: "Follow & Tap-Tap Layar  •  Open Mabar ketik di chat  •  Saweria aktif", sub: "", x: 4, y: 90, scale: 1.0, opacity: 1.0, color: "#f8fafc", visible: true, z: 7 }
+  ]
+};
 
-  <script>
-    // Web Audio Synthesizer
-    let audioCtx = null;
-    let sfxGainPercent = 85;
-    let activeSfxMeterBoost = 0;
+let audioCtx = null;
+let censorOsc = null;
+let censorGain = null;
+let webcamStream = null;
+let screenStream = null;
+let micStream = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let pollTimer = null;
 
-    function ensureAudio() {
-      if (!audioCtx) {
-        const Ctx = window.AudioContext || window.webkitAudioContext;
-        if (Ctx) audioCtx = new Ctx();
-      }
-      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-      return audioCtx;
-    }
+function ensureAudioCtx() {
+  if (!audioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new Ctx({ sampleRate: 48000 });
+  }
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  return audioCtx;
+}
 
-    // Active SaaS Tier State
-    let currentTier = 'FREE'; // FREE | DAILY | WEEKLY | MONTHLY
-    let pendingCheckoutPlan = null;
-    let smartTtsEnabled = false;
-    let simulcastActive = false;
-    let failoverActive = false;
-    let revenueIdr = 0;
-    let peakKbps = 0;
-    let replayClips = 0;
+/* 1. RENDER INTERACTIVE WYSIWYG STAGE NODES WITH DIRECT DRAG + CORNER RESIZE */
+function renderStageNodes() {
+  const mount = document.getElementById("nodesMount");
+  mount.innerHTML = "";
+  const stage = document.getElementById("liveStage");
+  const hideForPrivacy = state.scene === "PRIVACY_SHIELD";
 
-    function openTabByIndex(idx) {
-      document.querySelectorAll('.tab-pane').forEach((p, i) => p.classList.toggle('active', i === idx));
-      document.querySelectorAll('.nav-item').forEach((b, i) => b.classList.toggle('active', i === idx));
-    }
+  document.getElementById("watermarkEl").style.display =
+    (state.cleanWatermark && state.tier !== "FREE") || hideForPrivacy ? "none" : "flex";
+  document.getElementById("wmText").textContent =
+    state.tier === "FREE" ? "DiStream Free" : "DiStream " + state.tier;
 
-    function openQrisCheckout(tierCode, title, basePrice) {
-      const promo = document.getElementById('promoInputBox').value.trim().toUpperCase();
-      if (promo === 'TRIALVIP') {
-        activateTierNow('MONTHLY', 'Studio Pro VIP (Trial 24 Jam)');
-        return;
-      }
-      let discount = 0;
-      if (promo === 'XYKAL50') discount = 50;
-      else if (promo === 'HEMAT20') discount = 20;
+  if (!hideForPrivacy) {
+    [...state.nodes].sort((a, b) => a.z - b.z).forEach((node) => {
+      if (!node.visible) return;
+      if (node.kind === "pip" && state.scene === "IRL_CAMERA") return;
 
-      const finalPrice = Math.round(basePrice * (1 - discount / 100));
-      const fee = Math.round(finalPrice * 0.007) + 310;
-      const total = finalPrice + fee;
-      const orderId = 'DST-' + tierCode + '-' + String(Date.now()).slice(-6);
+      const el = document.createElement("div");
+      el.className = "stage-node" + (state.selectedNodeId === node.id ? " selected" : "");
+      el.style.left = node.x + "%";
+      el.style.top = node.y + "%";
+      el.style.zIndex = String(10 + node.z);
+      el.style.opacity = String(node.opacity);
+      el.style.transform = `scale(${node.scale})`;
 
-      pendingCheckoutPlan = { tierCode, title };
-      document.getElementById('qrisPlanTitle').textContent = 'QRIS — ' + title;
-      document.getElementById('qrisSummaryText').textContent =
-        `Tagihan: Rp ${(total).toLocaleString('id-ID')} ${discount > 0 ? `(Diskon Promo ${discount}%)` : '(Termasuk biaya QRIS Pakasir)'}`;
-      document.getElementById('qrisOrderIdLabel').textContent = 'ORDER: ' + orderId;
-      drawQrisSvgPattern(orderId);
-      document.getElementById('qrisModal').classList.add('open');
-    }
-
-    function drawQrisSvgPattern(seedStr) {
-      const svg = document.getElementById('qrisMatrixSvg');
-      let rects = '';
-      // Corner finder patterns
-      const corners = [[8,8],[80,8],[8,80]];
-      corners.forEach(([cx, cy]) => {
-        rects += `<rect x="${cx}" y="${cy}" width="32" height="32" rx="4" fill="none" stroke="#111827" stroke-width="5"/>`;
-        rects += `<rect x="${cx+9}" y="${cy+9}" width="14" height="14" rx="2"/>`;
-      });
-      for (let r = 0; r < 11; r++) {
-        for (let c = 0; c < 11; c++) {
-          const x = 10 + c * 9.5, y = 10 + r * 9.5;
-          if ((c < 4 && r < 4) || (c > 6 && r < 4) || (c < 4 && r > 6)) continue;
-          if (((r * 13 + c * 7 + seedStr.charCodeAt(r % seedStr.length)) % 3) !== 0) {
-            rects += `<rect x="${x}" y="${y}" width="6.5" height="6.5" rx="1.2"/>`;
-          }
-        }
-      }
-      svg.innerHTML = rects;
-    }
-
-    function closeQrisModal() {
-      document.getElementById('qrisModal').classList.remove('open');
-    }
-
-    function completeQrisSettlement() {
-      closeQrisModal();
-      if (!pendingCheckoutPlan) return;
-      activateTierNow(pendingCheckoutPlan.tierCode, pendingCheckoutPlan.title);
-    }
-
-    function activateTierNow(tierCode, label) {
-      currentTier = tierCode;
-      playRealSfx('VICTORY', false, null);
-
-      const headerPill = document.getElementById('headerTierBadge');
-      headerPill.textContent = label;
-      headerPill.classList.add('pro');
-
-      document.getElementById('saasStatusBadge').textContent = label;
-      document.getElementById('saasNoticeBox').textContent =
-        `Lisensi ${label} aktif! Watermark dihapus & fitur eksklusif sesuai paket telah dibuka.`;
-      document.getElementById('codecBadgeText').textContent = '1080p60 HEVC';
-
-      // Auto-remove watermark on paid tier
-      document.getElementById('ovWatermark').style.display = 'none';
-      document.getElementById('swHideWatermark').classList.add('on');
-      document.getElementById('wmSubHint').textContent = 'Watermark bersih 100% (Pro Aktif)';
-
-      // Unlock Pro SoundFX pads visually
-      document.querySelectorAll('.pro-pad').forEach(b => b.classList.remove('locked'));
-
-      // Highlight active plan card
-      ['DAILY', 'WEEKLY', 'MONTHLY'].forEach(code => {
-        document.getElementById('cardPlan' + code).classList.toggle('active-tier', code === tierCode);
-      });
-
-      if (tierCode === 'WEEKLY' || tierCode === 'MONTHLY') {
-        simulcastActive = true;
-        document.getElementById('swSimulcast').classList.add('on');
-        document.getElementById('simulcastStageBadge').textContent = 'Simulcast: TikTok+YT+Twitch';
-      }
-      if (tierCode === 'MONTHLY') {
-        smartTtsEnabled = true;
-        failoverActive = true;
-        document.getElementById('swSmartTts').classList.add('on');
-        document.getElementById('swFailover').classList.add('on');
-      }
-      renderCustomTexts();
-      pushFeedEvent('SaaS', 'Lisensi Aktif', `Paket ${label} berhasil diaktifkan`);
-    }
-
-    function toggleCleanWatermark() {
-      if (currentTier === 'FREE') {
-        openTabByIndex(2);
-        return;
-      }
-      const sw = document.getElementById('swHideWatermark');
-      sw.classList.toggle('on');
-      const hidden = sw.classList.contains('on');
-      const wm = document.getElementById('ovWatermark');
-      wm.textContent = '@kreator_pro';
-      wm.style.display = hidden ? 'none' : 'block';
-    }
-
-    function toggleProFeature(feature, btn) {
-      if ((feature === 'SIMULCAST' && (currentTier === 'FREE' || currentTier === 'DAILY')) ||
-          ((feature === 'TTS' || feature === 'FAILOVER') && currentTier !== 'MONTHLY')) {
-        alert('Fitur eksklusif ini memerlukan upgrade paket Mingguan / VIP Bulanan.');
-        return;
-      }
-      btn.classList.toggle('on');
-      const on = btn.classList.contains('on');
-      if (feature === 'SIMULCAST') {
-        simulcastActive = on;
-        document.getElementById('simulcastStageBadge').textContent = on ? 'Simulcast: TikTok+YT+Twitch' : 'Single RTMP';
-      } else if (feature === 'TTS') {
-        smartTtsEnabled = on;
-      } else if (feature === 'FAILOVER') {
-        failoverActive = on;
-      }
-    }
-
-    function saveReplay30s() {
-      if (currentTier === 'FREE' || currentTier === 'DAILY') {
-        openTabByIndex(2);
-        alert('Instant Replay 30 Detik tersedia mulai Paket Mingguan (Rp 19.000).');
-        return;
-      }
-      replayClips++;
-      document.getElementById('statReplayClips').textContent = replayClips + ' klip';
-      pushFeedEvent('Replay', 'Klip #' + replayClips, 'Momen 30 detik terakhir disimpan untuk konten');
-    }
-
-    function speakIndonesianTts(text) {
-      if (!smartTtsEnabled || !('speechSynthesis' in window)) return;
-      try {
-        window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.lang = 'id-ID';
-        utter.rate = 1.02;
-        window.speechSynthesis.speak(utter);
-      } catch (_) {}
-    }
-
-    function playRealSfx(kind, requiresPro, btnEl) {
-      if (requiresPro && currentTier === 'FREE') {
-        openTabByIndex(2);
-        return;
-      }
-      const ctx = ensureAudio();
-      if (btnEl) {
-        btnEl.classList.add('playing');
-        setTimeout(() => btnEl.classList.remove('playing'), 420);
-      }
-      activeSfxMeterBoost = 0.92;
-      setTimeout(() => { activeSfxMeterBoost = 0; }, 650);
-      if (!ctx) return;
-
-      const now = ctx.currentTime;
-      const master = ctx.createGain();
-      master.gain.value = (sfxGainPercent / 100) * 0.35;
-      master.connect(ctx.destination);
-
-      if (kind === 'COIN') {
-        [987.77, 1318.51].forEach((freq, idx) => {
-          const o = ctx.createOscillator(), g = ctx.createGain();
-          o.type = 'sine'; o.frequency.value = freq;
-          g.gain.setValueAtTime(0.001, now + idx * 0.09);
-          g.gain.exponentialRampToValueAtTime(0.9, now + idx * 0.09 + 0.015);
-          g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.45);
-          o.connect(g); g.connect(master);
-          o.start(now + idx * 0.09); o.stop(now + idx * 0.09 + 0.48);
-        });
-      } else if (kind === 'AIRHORN') {
-        [0, 0.17, 0.34].forEach((offset, i) => {
-          const dur = i === 2 ? 0.45 : 0.13;
-          [392, 466.16, 587.33].forEach(f => {
-            const o = ctx.createOscillator(), g = ctx.createGain();
-            o.type = 'sawtooth'; o.frequency.value = f;
-            g.gain.setValueAtTime(0.3, now + offset);
-            g.gain.exponentialRampToValueAtTime(0.01, now + offset + dur);
-            o.connect(g); g.connect(master);
-            o.start(now + offset); o.stop(now + offset + dur);
-          });
-        });
-      } else if (kind === 'VICTORY') {
-        [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
-          const o = ctx.createOscillator(), g = ctx.createGain();
-          o.type = 'triangle'; o.frequency.value = f;
-          g.gain.setValueAtTime(0.01, now + i * 0.1);
-          g.gain.linearRampToValueAtTime(0.75, now + i * 0.1 + 0.03);
-          g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.5);
-          o.connect(g); g.connect(master);
-          o.start(now + i * 0.1); o.stop(now + i * 0.1 + 0.55);
-        });
-      } else if (kind === 'BASS_DROP') {
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.type = 'sine';
-        o.frequency.setValueAtTime(155, now);
-        o.frequency.exponentialRampToValueAtTime(34, now + 0.85);
-        g.gain.setValueAtTime(1.0, now);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
-        o.connect(g); g.connect(master);
-        o.start(now); o.stop(now + 0.92);
-      } else if (kind === 'CENSOR') {
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.type = 'sine'; o.frequency.value = 1000;
-        g.gain.setValueAtTime(0.85, now);
-        g.gain.setValueAtTime(0.85, now + 0.5);
-        g.gain.linearRampToValueAtTime(0.001, now + 0.55);
-        o.connect(g); g.connect(master);
-        o.start(now); o.stop(now + 0.56);
-      } else if (kind === 'RISER') {
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.type = 'sawtooth';
-        o.frequency.setValueAtTime(190, now);
-        o.frequency.exponentialRampToValueAtTime(980, now + 1.0);
-        g.gain.setValueAtTime(0.15, now);
-        g.gain.linearRampToValueAtTime(0.7, now + 0.95);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 1.05);
-        o.connect(g); g.connect(master);
-        o.start(now); o.stop(now + 1.06);
+      if (node.kind === "goal") {
+        el.innerHTML = `
+          <div class="widget-card" style="width:176px;">
+            <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:800;color:${node.color};">
+              <span>${escapeHtml(node.title)}</span><span>${escapeHtml(node.sub)}</span>
+            </div>
+            <div class="goal-track"><div class="goal-fill" style="width:${node.pct || 35}%;"></div></div>
+          </div>`;
+      } else if (node.kind === "love") {
+        el.innerHTML = `
+          <div class="widget-card" style="display:flex;align-items:center;gap:7px;">
+            <span style="width:9px;height:9px;border-radius:50%;background:#f43f5e;display:inline-block;"></span>
+            <div>
+              <div style="font-size:10px;font-weight:800;color:${node.color};">${escapeHtml(node.title)}</div>
+              <div style="font-size:9px;opacity:0.8;">${escapeHtml(node.sub)}</div>
+            </div>
+          </div>`;
+      } else if (node.kind === "sub") {
+        el.innerHTML = `<div class="widget-card" style="font-family:monospace;font-size:10.5px;font-weight:800;color:${node.color};">${escapeHtml(node.title)}</div>`;
+      } else if (node.kind === "pip") {
+        el.innerHTML = `
+          <div class="pip-cam-box">
+            <video class="stage-pip-video ${state.mirrorCam ? 'mirror-x' : ''}" autoplay playsinline muted style="display:${webcamStream ? 'block' : 'none'};"></video>
+            <div style="display:${webcamStream ? 'none' : 'block'};font-size:9.5px;color:#94a3b8;padding:6px;text-align:center;">Facecam PiP<br/>(Geser / Resize)</div>
+          </div>`;
+        const v = el.querySelector("video");
+        if (v && webcamStream) v.srcObject = webcamStream;
+      } else if (node.kind === "sticker") {
+        el.innerHTML = `<img src="${node.imgSrc}" style="width:96px;height:auto;border-radius:8px;display:block;pointer-events:none;" />`;
+      } else if (node.kind === "ticker") {
+        el.innerHTML = `<div class="widget-card" style="width:255px;white-space:nowrap;overflow:hidden;font-size:9.5px;font-weight:700;color:${node.color};">${escapeHtml(node.title)}</div>`;
       } else {
-        const bufferSize = ctx.sampleRate * 0.6;
-        const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-        const output = noiseBuffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-          output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.3));
-        }
-        const white = ctx.createBufferSource();
-        white.buffer = noiseBuffer;
-        const filter = ctx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.value = kind === 'RIMSHOT' ? 2400 : 1250;
-        white.connect(filter); filter.connect(master);
-        white.start(now);
+        el.innerHTML = `<div class="widget-card" style="font-size:11px;font-weight:800;color:${node.color};">${escapeHtml(node.title)}</div>`;
       }
-    }
 
-    // Studio state & UI helpers
-    let isLive = false, isMuted = false, isRec = false, isShield = false, isPortrait = true;
-    let pinGuardEnabled = true;
-    let likesCount = 1420, goalCurrent = 350, uptimeSec = 0;
-    let lovePresetMode = 'TAP_LOVE', topSupporterName = '@rizky_gaming';
-    let customTexts = [{ id: 't1', text: 'ID Mabar: 88210492', x: 8, y: 62, visible: true }];
+      const knob = document.createElement("div");
+      knob.className = "resize-knob";
+      knob.title = "Tarik sudut ini untuk mengubah ukuran";
+      el.appendChild(knob);
 
-    function maxAllowedCustomTexts() {
-      if (currentTier === 'FREE') return 1;
-      if (currentTier === 'DAILY') return 3;
-      return 99;
-    }
+      // Direct Drag on Canvas
+      el.addEventListener("pointerdown", (ev) => {
+        if (ev.target === knob) return;
+        ev.stopPropagation();
+        selectNode(node.id);
+        const rect = stage.getBoundingClientRect();
+        const startX = ev.clientX;
+        const startY = ev.clientY;
+        const origX = node.x;
+        const origY = node.y;
+        el.setPointerCapture(ev.pointerId);
 
-    function renderCustomTexts() {
-      const canvasHolder = document.getElementById('customTextCanvasLayer');
-      const listHolder = document.getElementById('customTextListContainer');
-      canvasHolder.innerHTML = ''; listHolder.innerHTML = '';
-      const cap = maxAllowedCustomTexts();
-      document.getElementById('customTextQuotaBadge').textContent = `${customTexts.length} / ${cap} teks`;
-
-      customTexts.forEach(item => {
-        if (item.visible) {
-          const el = document.createElement('div');
-          el.className = 'ov-card ov-custom-text';
-          el.style.left = item.x + '%'; el.style.top = item.y + '%';
-          el.textContent = item.text;
-          canvasHolder.appendChild(el);
-        }
-        const row = document.createElement('div');
-        row.style.cssText = 'background:var(--surface-2);border-radius:10px;padding:8px 10px;margin-top:8px;';
-        row.innerHTML = `
-          <div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;font-weight:600;margin-bottom:4px;">
-            <span>${item.text}</span>
-            <button class="btn-secondary" style="padding:2px 7px;font-size:10px;" onclick="removeCustomText('${item.id}')">Hapus</button>
-          </div>
-          <input type="range" min="18" max="82" value="${item.y}" oninput="moveCustomText('${item.id}', this.value)" />
-        `;
-        listHolder.appendChild(row);
+        const onMove = (me) => {
+          const dxPct = ((me.clientX - startX) / Math.max(1, rect.width)) * 100;
+          const dyPct = ((me.clientY - startY) / Math.max(1, rect.height)) * 100;
+          node.x = Math.max(1, Math.min(86, +(origX + dxPct).toFixed(1)));
+          node.y = Math.max(1, Math.min(92, +(origY + dyPct).toFixed(1)));
+          el.style.left = node.x + "%";
+          el.style.top = node.y + "%";
+          document.getElementById("inspSelectedBadge").textContent = `${node.id} (${Math.round(node.x)}%, ${Math.round(node.y)}%)`;
+        };
+        const onUp = () => {
+          el.removeEventListener("pointermove", onMove);
+          el.removeEventListener("pointerup", onUp);
+        };
+        el.addEventListener("pointermove", onMove);
+        el.addEventListener("pointerup", onUp);
       });
-    }
 
-    function addCustomTextItem() {
-      const inp = document.getElementById('newCustomTextInput');
-      const val = inp.value.trim();
-      if (!val) return;
-      if (customTexts.length >= maxAllowedCustomTexts()) {
-        openTabByIndex(2);
-        alert('Kuota teks paket Starter penuh (1/1). Upgrade ke Harian / Mingguan untuk menambah teks bebas.');
-        return;
-      }
-      customTexts.push({ id: 't' + Date.now(), text: val, x: 8, y: 70, visible: true });
-      inp.value = '';
-      renderCustomTexts();
-    }
-    function moveCustomText(id, yVal) {
-      const f = customTexts.find(t => t.id === id);
-      if (f) f.y = Number(yVal);
-      renderCustomTexts();
-    }
-    function removeCustomText(id) {
-      customTexts = customTexts.filter(t => t.id !== id);
-      renderCustomTexts();
-    }
+      // Double-click directly on canvas to edit text immediately
+      el.addEventListener("dblclick", (ev) => {
+        ev.stopPropagation();
+        selectNode(node.id);
+        const inp = document.getElementById("inspText");
+        inp.focus();
+        inp.select();
+      });
 
-    function triggerLoveTap(addAmount, spawnHearts) {
-      likesCount += addAmount;
-      updateLoveWidgetText();
-      if (spawnHearts) {
-        const vp = document.getElementById('liveViewport');
-        for (let i = 0; i < 3; i++) {
-          setTimeout(() => {
-            const h = document.createElement('div');
-            h.className = 'floating-heart';
-            h.style.right = (12 + Math.random() * 20) + 'px';
-            h.innerHTML = '<svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:#ef4444;stroke:none;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>';
-            vp.appendChild(h);
-            setTimeout(() => h.remove(), 1200);
-          }, i * 110);
-        }
-      }
-    }
+      // Direct Corner Resize Handle
+      knob.addEventListener("pointerdown", (ev) => {
+        ev.stopPropagation();
+        selectNode(node.id);
+        const startX = ev.clientX;
+        const origScale = node.scale;
+        knob.setPointerCapture(ev.pointerId);
+        const onMove = (me) => {
+          const delta = (me.clientX - startX) / 140;
+          node.scale = Math.max(0.55, Math.min(2.1, +(origScale + delta).toFixed(2)));
+          el.style.transform = `scale(${node.scale})`;
+          syncInspectorFields();
+        };
+        const onUp = () => {
+          knob.removeEventListener("pointermove", onMove);
+          knob.removeEventListener("pointerup", onUp);
+        };
+        knob.addEventListener("pointermove", onMove);
+        knob.addEventListener("pointerup", onUp);
+      });
 
-    function setLovePreset(mode, btn) {
-      lovePresetMode = mode;
-      btn.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-      btn.classList.add('active');
-      updateLoveWidgetText();
-    }
-
-    function updateLoveWidgetText() {
-      const main = document.getElementById('ovLoveMain');
-      const sub = document.getElementById('ovLoveSub');
-      if (lovePresetMode === 'TAP_LOVE') {
-        main.textContent = 'Tap-Tap Love';
-        sub.textContent = likesCount.toLocaleString('id-ID') + ' suka';
-      } else if (lovePresetMode === 'TARGET_LIKE') {
-        main.textContent = 'Target Like';
-        sub.textContent = likesCount.toLocaleString('id-ID') + ' / 5.000';
-      } else {
-        main.textContent = 'Top Supporter';
-        sub.textContent = topSupporterName;
-      }
-    }
-
-    function setFrameTheme(code, accentHex, requiresPro, btn) {
-      if (requiresPro && currentTier === 'FREE') {
-        openTabByIndex(2);
-        return;
-      }
-      btn.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('liveViewport').setAttribute('data-frame', code);
-      document.documentElement.style.setProperty('--overlay-accent', accentHex);
-    }
-
-    function selectScene(sceneKey, requiresPro, btn) {
-      if (requiresPro && currentTier === 'FREE') {
-        openTabByIndex(2);
-        return;
-      }
-      document.querySelectorAll('.scene-btn').forEach(b => b.classList.remove('active'));
-      if (btn) btn.classList.add('active');
-      isShield = sceneKey === 'PRIVACY';
-      document.getElementById('btnHeaderShield').classList.toggle('warn', isShield);
-      const map = {
-        GAMEPLAY: ['scene-gameplay', 'Layar Game Aktif', 'Klik layar = Simulasi Tap Love'],
-        STARTING: ['scene-starting', 'Siaran Segera Dimulai', 'Menyiapkan Arena'],
-        BRB: ['scene-brb', 'Istirahat Sebentar', 'Segera Kembali'],
-        CAMERA: ['scene-camera', 'Kamera Penuh (OIS)', 'Mode Ngobrol Kreator'],
-        PRIVACY: ['scene-privacy', 'Layar Privasi Aktif', 'OTP & Chat Aman']
-      };
-      const [cls, title, sub] = map[sceneKey];
-      document.getElementById('sceneBg').className = 'scene-visual ' + cls;
-      document.getElementById('sceneTitleText').textContent = title;
-      document.getElementById('sceneSubText').textContent = sub;
-    }
-
-    function togglePrivacyShield() {
-      if (isShield) selectScene('GAMEPLAY', false, document.querySelector('.scene-btn'));
-      else selectScene('PRIVACY', false, document.getElementById('scenePrivacyBtn'));
-    }
-
-    function activatePanicMode() {
-      selectScene('PRIVACY', false, document.getElementById('scenePrivacyBtn'));
-      if (!isMuted) toggleMicMute();
-      pushFeedEvent('Keamanan', 'Darurat Panik', 'Layar Privasi & Bisu Mic dikunci');
-    }
-
-    function simulateGift() {
-      playRealSfx('COIN', false, null);
-      topSupporterName = '@sultan_arena';
-      goalCurrent = Math.min(1000, goalCurrent + 299);
-      revenueIdr += 24500;
-      document.getElementById('ovGoalNums').textContent = goalCurrent + ' / 1000';
-      document.getElementById('ovGoalFill').style.width = Math.round((goalCurrent / 1000) * 100) + '%';
-      document.getElementById('statRevenueIdr').textContent = 'Rp ' + revenueIdr.toLocaleString('id-ID');
-      updateLoveWidgetText();
-      showCanvasAlert('Gift TikTok', '@sultan_arena', 'Mengirim Corgi x1');
-      speakIndonesianTts('Terima kasih sultan arena sudah mengirim gift Corgi');
-      pushFeedEvent('Gift', '@sultan_arena', 'Mengirim Corgi x1 (+Rp 24.500)');
-    }
-
-    function simulateDonation() {
-      playRealSfx('COIN', false, null);
-      revenueIdr += 50000;
-      document.getElementById('statRevenueIdr').textContent = 'Rp ' + revenueIdr.toLocaleString('id-ID');
-      showCanvasAlert('Saweria', 'Budi Santoso (Rp 50.000)', 'Semangat push Mythic malam ini!');
-      speakIndonesianTts('Terima kasih Budi Santoso atas saweria lima puluh ribu rupiah. Semangat push Mythic malam ini!');
-      pushFeedEvent('Saweria', 'Budi Santoso', 'Rp 50.000 — Semangat push Mythic malam ini!');
-    }
-
-    let alertTimer = null;
-    function showCanvasAlert(cat, sender, msg) {
-      document.getElementById('ovAlertCat').textContent = cat;
-      document.getElementById('ovAlertSender').textContent = sender;
-      document.getElementById('ovAlertMsg').textContent = msg;
-      const card = document.getElementById('ovAlertToast');
-      card.classList.add('visible');
-      if (alertTimer) clearTimeout(alertTimer);
-      alertTimer = setTimeout(() => card.classList.remove('visible'), 3600);
-    }
-
-    function toggleTheme() {
-      const root = document.documentElement;
-      root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
-    }
-    function toggleSafeZone() {
-      const el = document.getElementById('ovSafeZone');
-      const show = el.style.display !== 'block';
-      el.style.display = show ? 'block' : 'none';
-      document.getElementById('btnSafeZone').classList.toggle('active', show);
-    }
-    function toggleOrientationMode() {
-      isPortrait = !isPortrait;
-      document.getElementById('liveViewport').classList.toggle('landscape', !isPortrait);
-    }
-    function toggleMicMute() {
-      isMuted = !isMuted;
-      document.getElementById('btnBottomMute').classList.toggle('muted', isMuted);
-    }
-    function toggleLocalRec() {
-      isRec = !isRec;
-      document.getElementById('btnBottomRec').classList.toggle('recording', isRec);
-    }
-
-    function handleMainStreamAction() {
-      if (isLive && pinGuardEnabled) {
-        document.getElementById('pinModal').classList.add('open');
-        return;
-      }
-      toggleLiveStreamNow();
-    }
-    function confirmPinAndStop() {
-      if (document.getElementById('pinModalInput').value === '1234') {
-        document.getElementById('pinModal').classList.remove('open');
-        toggleLiveStreamNow();
-      }
-    }
-    function toggleLiveStreamNow() {
-      isLive = !isLive;
-      document.getElementById('headerStatusBadge').classList.toggle('live', isLive);
-      document.getElementById('btnGoLiveMain').classList.toggle('live', isLive);
-      document.getElementById('btnGoLiveLabel').textContent = isLive ? 'Akhiri Siaran Live' : 'Mulai Siaran Live';
-      document.getElementById('headerStatusText').textContent = isLive ? 'Live 00:00' : 'Siap';
-    }
-
-    const BANNED = ['judol', 'slot gacor', 'zeus88', 'kasino', 'kasar'];
-    function sendFilteredChatTest() {
-      let msg = document.getElementById('testChatInput').value.trim();
-      BANNED.forEach(w => { msg = msg.replace(new RegExp(w, 'gi'), '***'); });
-      if (msg) pushFeedEvent('Chat', '@viewer_id', msg);
-    }
-
-    function pushFeedEvent(type, sender, msg) {
-      const box = document.getElementById('eventFeedContainer');
-      const row = document.createElement('div');
-      row.style.cssText = 'background:var(--surface-2);border-radius:9px;padding:7px 10px;font-size:11.5px;display:flex;justify-content:space-between;gap:8px;';
-      row.innerHTML = `<span><strong>[${type}] ${sender}:</strong> ${msg}</span><span style="color:var(--text-muted);font-size:10px;">${new Date().toTimeString().slice(0,8)}</span>`;
-      box.prepend(row);
-
-      const mini = document.getElementById('miniGameChat');
-      const mLine = document.createElement('div');
-      mLine.textContent = `${sender}: ${msg}`;
-      mini.prepend(mLine);
-      while (mini.children.length > 4) mini.lastChild.remove();
-    }
-
-    // VU meters & live loop
-    ['vuSfx', 'vuMic', 'vuGame'].forEach(id => {
-      const el = document.getElementById(id);
-      for (let i = 0; i < 22; i++) { const d = document.createElement('div'); d.className = 'vu-seg'; el.appendChild(d); }
+      mount.appendChild(el);
     });
-    function paintVu(id, norm) {
-      const segs = document.getElementById(id).children;
-      const active = Math.round(norm * 22);
-      for (let i = 0; i < 22; i++) {
-        segs[i].style.background = i >= active ? 'var(--surface-2)' : (i >= 18 ? '#ef4444' : i >= 14 ? '#f59e0b' : '#10b981');
-      }
+  }
+  renderLayerChips();
+  syncInspectorFields();
+}
+
+function renderLayerChips() {
+  const wrap = document.getElementById("layerChipsRow");
+  wrap.innerHTML = "";
+  state.nodes.forEach((n) => {
+    const b = document.createElement("button");
+    b.className = "ds-btn sm" + (state.selectedNodeId === n.id ? " active" : "");
+    b.textContent = n.id + (n.visible ? "" : " (Off)");
+    b.onclick = () => selectNode(n.id);
+    wrap.appendChild(b);
+  });
+}
+
+function selectNode(id) {
+  state.selectedNodeId = id;
+  renderStageNodes();
+}
+
+function syncInspectorFields() {
+  const n = state.nodes.find((x) => x.id === state.selectedNodeId);
+  if (!n) return;
+  document.getElementById("inspSelectedBadge").textContent = `${n.id} (${Math.round(n.x)}%, ${Math.round(n.y)}%)`;
+  document.getElementById("inspText").value = n.title || "";
+  document.getElementById("inspSubtext").value = n.sub || "";
+  document.getElementById("inspScale").value = Math.round(n.scale * 100);
+  document.getElementById("lblNodeScale").textContent = Math.round(n.scale * 100) + "%";
+  document.getElementById("inspOpacity").value = Math.round(n.opacity * 100);
+  document.getElementById("lblNodeAlpha").textContent = Math.round(n.opacity * 100) + "%";
+  document.getElementById("btnVisLayer").textContent = n.visible ? "Sembunyikan" : "Tampilkan";
+}
+
+function applyInspectorEdit() {
+  const n = state.nodes.find((x) => x.id === state.selectedNodeId);
+  if (!n) return;
+  n.title = document.getElementById("inspText").value;
+  n.sub = document.getElementById("inspSubtext").value;
+  n.scale = Number(document.getElementById("inspScale").value) / 100;
+  n.opacity = Number(document.getElementById("inspOpacity").value) / 100;
+  renderStageNodes();
+}
+
+function pickNodeColor(hex) {
+  const n = state.nodes.find((x) => x.id === state.selectedNodeId);
+  if (!n) return;
+  n.color = hex;
+  renderStageNodes();
+}
+function toggleSelectedVisible() {
+  const n = state.nodes.find((x) => x.id === state.selectedNodeId);
+  if (!n) return;
+  n.visible = !n.visible;
+  renderStageNodes();
+}
+function bringSelectedForward() {
+  const n = state.nodes.find((x) => x.id === state.selectedNodeId);
+  if (!n) return;
+  n.z += 2;
+  renderStageNodes();
+}
+function duplicateSelectedNode() {
+  const n = state.nodes.find((x) => x.id === state.selectedNodeId);
+  if (!n) return;
+  const copyId = "LAYER_" + (state.nodes.length + 1);
+  state.nodes.push({ ...n, id: copyId, x: Math.min(80, n.x + 6), y: Math.min(85, n.y + 6), z: n.z + 1 });
+  selectNode(copyId);
+}
+function deleteSelectedNode() {
+  if (state.nodes.length <= 1) return;
+  state.nodes = state.nodes.filter((x) => x.id !== state.selectedNodeId);
+  state.selectedNodeId = state.nodes[0].id;
+  renderStageNodes();
+}
+function addNewTextNode() {
+  if (state.tier === "FREE" && state.nodes.filter((x) => x.kind === "text").length >= 2) {
+    openSaasModal();
+    return;
+  }
+  const id = "TEKS_" + (state.nodes.filter((x) => x.kind === "text").length + 1);
+  state.nodes.push({
+    id, kind: "text", title: "Teks Baru — Klik 2x untuk Edit", sub: "",
+    x: 10, y: 38, scale: 1.0, opacity: 1.0, color: "#fbbf24", visible: true, z: 12
+  });
+  selectNode(id);
+}
+function handleStickerUpload(ev) {
+  const f = ev.target.files && ev.target.files[0];
+  if (!f) return;
+  const url = URL.createObjectURL(f);
+  const id = "STIKER_" + (state.nodes.length + 1);
+  state.nodes.push({
+    id, kind: "sticker", title: f.name, sub: "", imgSrc: url,
+    x: 24, y: 42, scale: 1.0, opacity: 1.0, color: "#ffffff", visible: true, z: 14
+  });
+  selectNode(id);
+}
+
+/* 2. ORIENTATION, SAFE ZONE, GRID, SCENE & COLOR FILTER CONTROLS */
+function setOrientation(code, label) {
+  state.orientation = code;
+  const stage = document.getElementById("liveStage");
+  stage.className = "live-stage ratio-" + code;
+  ["9_16", "16_9", "4_5", "1_1"].forEach((k) => {
+    document.getElementById("ori_" + k).classList.toggle("active", k.replace("_", "-") === code);
+  });
+  document.getElementById("safeZoneEl").style.display =
+    state.showSafeZone && (code === "9-16" || code === "4-5") ? "block" : "none";
+  refreshStageBackdrop();
+  document.getElementById("topStatusSub").textContent = "Orientasi diubah ke " + label;
+}
+function toggleSafeZone() {
+  state.showSafeZone = !state.showSafeZone;
+  document.getElementById("btnSafeZone").classList.toggle("active", state.showSafeZone);
+  document.getElementById("safeZoneEl").style.display = state.showSafeZone ? "block" : "none";
+}
+function toggleGridGuide() {
+  state.showGrid = !state.showGrid;
+  document.getElementById("btnGridGuide").classList.toggle("active", state.showGrid);
+  document.getElementById("gridGuideEl").style.display = state.showGrid ? "block" : "none";
+}
+function resetCanvasLayout() {
+  const defaults = { GOAL:[5,4], LOVE:[56,15], SUBATHON:[5,17], FACECAM:[63,55], TXT_1:[6,27], TICKER:[4,90] };
+  state.nodes.forEach((n) => {
+    if (defaults[n.id]) { n.x = defaults[n.id][0]; n.y = defaults[n.id][1]; }
+    n.scale = 1.0; n.opacity = 1.0; n.visible = true;
+  });
+  renderStageNodes();
+}
+function setFramePreset(hex, lightCard, btnEl) {
+  document.documentElement.style.setProperty("--stage-accent", hex);
+  const stage = document.getElementById("liveStage");
+  stage.style.setProperty("--stage-accent", hex);
+  stage.style.setProperty("--ov-bg", lightCard ? "rgba(255,255,255,0.92)" : "rgba(16,20,29,0.86)");
+  stage.style.setProperty("--ov-txt", lightCard ? "#0f172a" : "#f8fafc");
+  btnEl.parentElement.querySelectorAll(".ds-btn").forEach((b) => b.classList.remove("active"));
+  btnEl.classList.add("active");
+}
+
+function selectScene(sc) {
+  state.scene = sc;
+  document.querySelectorAll("#sceneButtonsWrap .ds-btn").forEach((b) => {
+    b.classList.toggle("active", b.dataset.scene === sc);
+  });
+  refreshStageBackdrop();
+  renderStageNodes();
+  updateFloatingTelemetry();
+}
+
+function refreshStageBackdrop() {
+  const stage = document.getElementById("liveStage");
+  const vid = document.getElementById("bgMediaVideo");
+  const headline = document.getElementById("inpHeadline").value || "Siaran Live";
+  const tag = document.getElementById("slateTag");
+  const main = document.getElementById("slateMain");
+  const sub = document.getElementById("slateSub");
+
+  let outW = state.resW, outH = state.resH;
+  if (state.orientation === "16-9") { outW = state.resH; outH = state.resW; }
+  else if (state.orientation === "4-5") { outW = state.resW; outH = Math.round(state.resW * 1.25); }
+  else if (state.orientation === "1-1") { outW = state.resW; outH = state.resW; }
+
+  main.textContent = headline;
+  sub.textContent = `${outW}x${outH} • ${state.fps}fps • ${(state.bitrateKbps / 1000).toFixed(1)} Mbps • ${state.codec}`;
+
+  if (state.scene === "IRL_CAMERA" && webcamStream) {
+    vid.srcObject = webcamStream;
+    vid.style.display = "block";
+    document.getElementById("stageCenterInfo").style.display = "none";
+  } else if (state.scene === "GAMEPLAY" && screenStream) {
+    vid.srcObject = screenStream;
+    vid.style.display = "block";
+    document.getElementById("stageCenterInfo").style.display = "none";
+  } else {
+    if (!vid.dataset.customFile) vid.style.display = "none";
+    document.getElementById("stageCenterInfo").style.display = "grid";
+    const palettes = {
+      GAMEPLAY: ["KANVAS GAME / LAYAR UTAMA", "linear-gradient(145deg,#0f253e,#191338,#09101f)"],
+      IRL_CAMERA: ["MODE KAMERA PENUH IRL", "linear-gradient(145deg,#132e35,#0f172a)"],
+      STARTING_SOON: ["SIARAN SEGERA DIMULAI", "linear-gradient(145deg,#0f172a,#1d4ed8)"],
+      INTERMISSION_BRB: ["ISTIRAHAT SEJENAK (BRB)", "linear-gradient(145deg,#311042,#1e1b4b)"],
+      PRIVACY_SHIELD: ["LAYAR PRIVASI AKTIF (ANTI-INTIP OTP)", "linear-gradient(145deg,#090d16,#111827)"]
+    };
+    const [t, bg] = palettes[state.scene] || palettes.GAMEPLAY;
+    tag.textContent = t;
+    stage.style.background = bg;
+  }
+}
+
+/* 3. REAL WEBCAM, REAL SCREEN CAPTURE, UPLOAD & ENCODER CONTROLS */
+async function toggleRealWebcam() {
+  const btn = document.getElementById("btnRealCam");
+  if (webcamStream) {
+    webcamStream.getTracks().forEach((t) => t.stop());
+    webcamStream = null;
+    btn.textContent = "Nyalakan Kamera";
+    btn.classList.remove("active");
+    document.getElementById("fhPipVideo").style.display = "none";
+    document.getElementById("fhPipPlaceholder").style.display = "block";
+    refreshStageBackdrop();
+    renderStageNodes();
+    return;
+  }
+  try {
+    webcamStream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 }, audio: false });
+    btn.textContent = "Kamera Aktif";
+    btn.classList.add("active");
+    const fv = document.getElementById("fhPipVideo");
+    fv.srcObject = webcamStream;
+    fv.style.display = "block";
+    document.getElementById("fhPipPlaceholder").style.display = "none";
+    refreshStageBackdrop();
+    renderStageNodes();
+  } catch (e) {
+    document.getElementById("topStatusSub").textContent = "Izin kamera tidak tersedia di iframe ini — buka di tab browser penuh untuk webcam live";
+  }
+}
+
+async function startRealScreenShare() {
+  try {
+    screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+    document.getElementById("btnRealScreen").classList.add("active");
+    selectScene("GAMEPLAY");
+    screenStream.getVideoTracks()[0].onended = () => {
+      screenStream = null;
+      document.getElementById("btnRealScreen").classList.remove("active");
+      refreshStageBackdrop();
+    };
+  } catch {
+    document.getElementById("topStatusSub").textContent = "Screen capture dibatalkan atau dibatasi sandbox preview";
+  }
+}
+
+function handleBgUpload(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  const vid = document.getElementById("bgMediaVideo");
+  const img = document.getElementById("bgMediaImg");
+  if (file.type.startsWith("video/")) {
+    img.style.display = "none";
+    vid.srcObject = null;
+    vid.src = url;
+    vid.loop = true;
+    vid.dataset.customFile = "1";
+    vid.style.display = "block";
+    vid.play();
+  } else {
+    vid.style.display = "none";
+    img.src = url;
+    img.style.display = "block";
+  }
+  document.getElementById("stageCenterInfo").style.display = "none";
+}
+
+function toggleCameraMirror() {
+  state.mirrorCam = !state.mirrorCam;
+  document.getElementById("fhPipVideo").classList.toggle("mirror-x", state.mirrorCam);
+  renderStageNodes();
+}
+
+function applyQualityPreset(id, longS, shortS, fps, kbps, isPro) {
+  if (isPro && state.tier === "FREE") { openSaasModal(); return; }
+  state.resW = shortS; state.resH = longS; state.fps = fps; state.bitrateKbps = kbps;
+  document.getElementById("rngBitrate").value = kbps;
+  document.getElementById("lblBitrate").textContent = `${(kbps / 1000).toFixed(1)} Mbps (${kbps} kbps)`;
+  ["pre_540", "pre_720_30", "pre_720_60", "pre_1080_60"].forEach((k) => document.getElementById(k).classList.remove("active"));
+  const map = { "540p": "pre_540", "720p30": "pre_720_30", "720p60": "pre_720_60", "1080p60": "pre_1080_60" };
+  if (map[id]) document.getElementById(map[id]).classList.add("active");
+  setFps(fps);
+  refreshStageBackdrop();
+}
+function updateEncoderManual() {
+  state.bitrateKbps = Number(document.getElementById("rngBitrate").value);
+  document.getElementById("lblBitrate").textContent = `${(state.bitrateKbps / 1000).toFixed(1)} Mbps (${state.bitrateKbps} kbps)`;
+  refreshStageBackdrop();
+}
+function setFps(v) {
+  state.fps = v;
+  [24, 30, 45, 60].forEach((n) => {
+    const b = document.getElementById("fps_" + n);
+    if (b) b.classList.toggle("active", n === v);
+    if (b && n === v && n === 60) b.textContent = "60 FPS";
+  });
+  refreshStageBackdrop();
+}
+function setCodec(c) {
+  if (c === "H.265" && state.tier === "FREE") { openSaasModal(); return; }
+  state.codec = c;
+  document.getElementById("codec_h264").classList.toggle("active", c === "H.264");
+  document.getElementById("codec_hevc").classList.toggle("active", c === "H.265");
+  refreshStageBackdrop();
+}
+function setColorGrade(id, br, ct, sat, label) {
+  state.brightness = br; state.contrast = ct; state.saturate = sat;
+  document.getElementById("rngBright").value = br;
+  document.getElementById("lblGrade").textContent = label;
+  applyVisualFilters();
+}
+function applyVisualFilters() {
+  state.brightness = Number(document.getElementById("rngBright").value);
+  document.getElementById("lblBright").textContent = `${state.brightness}% / ${state.contrast}%`;
+  const f = `brightness(${state.brightness}%) contrast(${state.contrast}%) saturate(${state.saturate}%)`;
+  document.getElementById("liveStage").style.filter = f;
+}
+
+/* 4. REAL FLOATING HUD ("TES MELAYANG") DRAG, BUBBLE SNAP, OPACITY & BROWSER OS PiP */
+(function initFloatingDrag() {
+  const cap = document.getElementById("floatingCapsule");
+  const handle = document.getElementById("fhDragHandle");
+  const bubble = document.getElementById("fhBubble");
+
+  function attachDrag(el) {
+    el.addEventListener("pointerdown", (ev) => {
+      if (ev.target.tagName === "BUTTON") return;
+      const startX = ev.clientX, startY = ev.clientY;
+      const rect = cap.getBoundingClientRect();
+      el.setPointerCapture(ev.pointerId);
+      const move = (me) => {
+        const nx = Math.max(6, Math.min(window.innerWidth - 70, rect.left + (me.clientX - startX)));
+        const ny = Math.max(8, Math.min(window.innerHeight - 60, rect.top + (me.clientY - startY)));
+        cap.style.left = nx + "px";
+        cap.style.top = ny + "px";
+      };
+      const up = () => {
+        el.removeEventListener("pointermove", move);
+        el.removeEventListener("pointerup", up);
+      };
+      el.addEventListener("pointermove", move);
+      el.addEventListener("pointerup", up);
+    });
+  }
+  attachDrag(handle);
+  attachDrag(bubble);
+})();
+
+function toggleFloatingHud() {
+  state.floatingOpen = !state.floatingOpen;
+  document.getElementById("floatingCapsule").classList.toggle("visible", state.floatingOpen);
+  const btn = document.getElementById("btnToggleFloating");
+  btn.textContent = state.floatingOpen ? "Tes Melayang: Aktif" : "Tes Melayang: Nonaktif";
+  btn.classList.toggle("active", state.floatingOpen);
+}
+function collapseFloatingBubble() {
+  document.getElementById("fhExpanded").style.display = "none";
+  document.getElementById("fhBubble").style.display = "grid";
+}
+function expandFloatingBubble() {
+  document.getElementById("fhBubble").style.display = "none";
+  document.getElementById("fhExpanded").style.display = "block";
+}
+function toggleFloatingPipCam() {
+  state.floatingCamOpen = !state.floatingCamOpen;
+  document.getElementById("fhPipBox").style.display = state.floatingCamOpen ? "grid" : "none";
+  document.getElementById("fhCamBtn").classList.toggle("active", state.floatingCamOpen);
+}
+function cycleFloatingOpacity() {
+  const alphas = [0.96, 0.76, 0.56];
+  state.floatingOpacityIdx = (state.floatingOpacityIdx + 1) % alphas.length;
+  const a = alphas[state.floatingOpacityIdx];
+  document.getElementById("floatingCapsule").style.opacity = String(a);
+  document.getElementById("fhAlphaBtn").textContent = Math.round(a * 100) + "%";
+}
+function cycleFloatingCamSize() {
+  const sizes = [[84, 112, "Ukuran S"], [108, 142, "Ukuran M"], [144, 190, "Ukuran L"]];
+  state.floatingCamSizeIdx = (state.floatingCamSizeIdx + 1) % sizes.length;
+  const [w, h, lbl] = sizes[state.floatingCamSizeIdx];
+  const box = document.getElementById("fhPipBox");
+  box.style.width = w + "px"; box.style.height = h + "px";
+  document.getElementById("fhSizeBtn").textContent = lbl;
+}
+function updateFloatingTelemetry() {
+  const mm = String(Math.floor(state.liveSeconds / 60)).padStart(2, "0");
+  const ss = String(state.liveSeconds % 60).padStart(2, "0");
+  document.getElementById("fhStatusText").textContent = state.isLive
+    ? `LIVE ${mm}:${ss} • ${(state.bitrateKbps / 1000).toFixed(1)}Mbps`
+    : `Melayang • ${state.scene}`;
+}
+
+/* Real OS Picture-in-Picture & Real Local WebM Video Recording via Composited Canvas */
+function drawCompositeFrame() {
+  const cv = document.getElementById("pipCompositeCanvas");
+  const ctx = cv.getContext("2d");
+  ctx.fillStyle = "#0e1b31";
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  const bgVid = document.getElementById("bgMediaVideo");
+  if (bgVid && bgVid.readyState >= 2 && bgVid.style.display !== "none") {
+    ctx.drawImage(bgVid, 0, 0, cv.width, cv.height);
+  }
+  ctx.fillStyle = "rgba(15,23,42,0.85)";
+  ctx.fillRect(28, 28, cv.width - 56, 76);
+  ctx.fillStyle = "#60a5fa";
+  ctx.font = "bold 24px sans-serif";
+  ctx.fillText("DiStream Studio Live • " + state.scene, 48, 74);
+  state.nodes.filter((n) => n.visible).forEach((n) => {
+    const px = (n.x / 100) * cv.width;
+    const py = (n.y / 100) * cv.height;
+    ctx.fillStyle = "rgba(16,20,29,0.86)";
+    ctx.fillRect(px, py, 320 * n.scale, 56 * n.scale);
+    ctx.fillStyle = n.color || "#fff";
+    ctx.font = `bold ${Math.round(20 * n.scale)}px sans-serif`;
+    ctx.fillText(n.title, px + 14, py + 35 * n.scale);
+  });
+  requestAnimationFrame(drawCompositeFrame);
+}
+requestAnimationFrame(drawCompositeFrame);
+
+async function popOutBrowserPiP() {
+  try {
+    const cv = document.getElementById("pipCompositeCanvas");
+    const vid = document.getElementById("pipBridgeVideo");
+    vid.srcObject = cv.captureStream(30);
+    await vid.play();
+    if (document.pictureInPictureElement) {
+      await document.exitPictureInPicture();
+    } else {
+      await vid.requestPictureInPicture();
     }
-    setInterval(() => {
-      paintVu('vuSfx', activeSfxMeterBoost > 0 ? 0.6 + Math.random() * 0.35 : 0.04);
-      paintVu('vuMic', isMuted ? 0 : 0.25 + Math.random() * 0.5);
-      paintVu('vuGame', 0.28 + Math.random() * 0.32);
-    }, 110);
+  } catch {
+    document.getElementById("topStatusSub").textContent = "Gunakan kapsul Melayang di kiri atas atau buka di Chrome/Edge untuk jendela PiP OS";
+  }
+}
 
-    setInterval(() => {
-      if (!isLive) return;
-      uptimeSec++;
-      const um = String(Math.floor(uptimeSec / 60)).padStart(2, '0');
-      const us = String(uptimeSec % 60).padStart(2, '0');
-      const kbps = (currentTier === 'FREE' ? 3950 : 5920) + Math.floor(Math.random() * 320);
-      peakKbps = Math.max(peakKbps, kbps);
-      document.getElementById('headerStatusText').textContent = `Live ${um}:${us}`;
-      document.getElementById('bitrateReadout').textContent = `${kbps} kbps`;
-      document.getElementById('statPeakBitrate').textContent = `${peakKbps} kbps`;
-      document.getElementById('hudStatusText').textContent = `Live ${um}:${us} • ${(kbps / 1000).toFixed(1)} Mbps`;
-    }, 1000);
+function toggleLocalVideoRecord() {
+  const btn = document.getElementById("btnRecordVideo");
+  if (mediaRecorder && mediaRecorder.state === "recording") {
+    mediaRecorder.stop();
+    btn.textContent = "Rekam Video Lokal";
+    btn.classList.remove("danger");
+    return;
+  }
+  try {
+    const cv = document.getElementById("pipCompositeCanvas");
+    const stream = cv.captureStream(30);
+    recordedChunks = [];
+    mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(recordedChunks, { type: "video/webm" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `DiStream_Record_${Date.now()}.webm`;
+      a.click();
+    };
+    mediaRecorder.start();
+    btn.textContent = "Stop & Simpan WebM";
+    btn.classList.add("danger");
+  } catch {
+    document.getElementById("topStatusSub").textContent = "Perekam lokal membutuhkan dukungan MediaRecorder browser";
+  }
+}
 
-    renderCustomTexts();
-    pushFeedEvent('Sistem', 'DiStream v3.0', 'SaaS Billing QRIS, Vault AES-256 & SoundFX siap');
-  </script>
+/* 5. REAL 48KHZ WEBAUDIO SYNTHESIZER + REAL HARDWARE MICROPHONE ANALYZER + CENSOR 1KHZ */
+async function toggleRealMicrophone() {
+  const btn = document.getElementById("btnRealMic");
+  if (micStream) {
+    micStream.getTracks().forEach((t) => t.stop());
+    micStream = null;
+    btn.textContent = "Aktifkan Mic Asli";
+    btn.classList.remove("active");
+    return;
+  }
+  try {
+    const ctx = ensureAudioCtx();
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const src = ctx.createMediaStreamSource(micStream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    src.connect(analyser);
+    const buf = new Uint8Array(analyser.frequencyBinCount);
+    btn.textContent = "Mic Asli Aktif";
+    btn.classList.add("active");
+    function pumpMic() {
+      if (!micStream) return;
+      analyser.getByteTimeDomainData(buf);
+      let sum = 0;
+      for (let i = 0; i < buf.length; i++) {
+        const v = (buf[i] - 128) / 128;
+        sum += v * v;
+      }
+      const rms = Math.sqrt(sum / buf.length);
+      const pct = state.micMuted ? 2 : Math.min(100, Math.round(rms * 340));
+      document.getElementById("vuMic").style.width = Math.max(4, pct) + "%";
+      document.getElementById("vuGame").style.width = (pct > 25 ? 18 : 46) + "%";
+      requestAnimationFrame(pumpMic);
+    }
+    pumpMic();
+  } catch {
+    document.getElementById("topStatusSub").textContent = "Izin mikrofon dibatasi oleh preview sandbox";
+  }
+}
+
+function playSfx(kind) {
+  const isProPad = ["VICTORY", "RIMSHOT", "BOOM_DROP"].includes(kind);
+  if (isProPad && state.tier === "FREE") { openSaasModal(); return; }
+  const ctx = ensureAudioCtx();
+  const vol = Number(document.getElementById("rngSfxVol").value) / 100;
+  const now = ctx.currentTime;
+  document.getElementById("vuSfx").style.width = "88%";
+  setTimeout(() => { document.getElementById("vuSfx").style.width = "4%"; }, 550);
+
+  if (kind === "COIN_ALERT" || kind === "VICTORY") {
+    const notes = kind === "COIN_ALERT" ? [987.77, 1318.51] : [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((f, idx) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = "triangle";
+      o.frequency.setValueAtTime(f, now + idx * 0.11);
+      g.gain.setValueAtTime(0.28 * vol, now + idx * 0.11);
+      g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.11 + 0.35);
+      o.connect(g).connect(ctx.destination);
+      o.start(now + idx * 0.11);
+      o.stop(now + idx * 0.11 + 0.36);
+    });
+  } else if (kind === "AIRHORN") {
+    [587.33, 592.0, 880.0].forEach((f) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = "sawtooth";
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0.16 * vol, now);
+      g.gain.linearRampToValueAtTime(0.001, now + 0.65);
+      o.connect(g).connect(ctx.destination);
+      o.start(now); o.stop(now + 0.66);
+    });
+  } else if (kind === "BOOM_DROP") {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(135, now);
+    o.frequency.exponentialRampToValueAtTime(34, now + 0.7);
+    g.gain.setValueAtTime(0.45 * vol, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.72);
+    o.connect(g).connect(ctx.destination);
+    o.start(now); o.stop(now + 0.73);
+  } else {
+    // Filtered noise burst for Applause / Rimshot
+    const len = ctx.sampleRate * 0.65;
+    const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.28));
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const g = ctx.createGain();
+    g.gain.value = 0.32 * vol;
+    src.connect(g).connect(ctx.destination);
+    src.start(now);
+  }
+}
+
+function setCensorTone(active) {
+  const ctx = ensureAudioCtx();
+  if (active && !censorOsc) {
+    censorOsc = ctx.createOscillator();
+    censorGain = ctx.createGain();
+    censorOsc.type = "sine";
+    censorOsc.frequency.value = 1000;
+    censorGain.gain.value = 0.3;
+    censorOsc.connect(censorGain).connect(ctx.destination);
+    censorOsc.start();
+    document.getElementById("vuMic").style.width = "95%";
+  } else if (!active && censorOsc) {
+    censorOsc.stop();
+    censorOsc.disconnect();
+    censorOsc = null;
+    document.getElementById("vuMic").style.width = "8%";
+  }
+}
+
+function toggleMicMute() {
+  state.micMuted = !state.micMuted;
+  document.getElementById("fhMuteBtn").textContent = state.micMuted ? "Mic Off" : "Mic On";
+}
+
+/* 6. TEST GIFT, INDONESIAN SMART TTS VOICE & MASTER BROADCAST */
+function showStageAlert(cat, user, msg) {
+  const pop = document.getElementById("stageAlertPop");
+  document.getElementById("popCat").textContent = cat;
+  document.getElementById("popUser").textContent = user;
+  document.getElementById("popMsg").textContent = msg;
+  pop.classList.add("show");
+  setTimeout(() => pop.classList.remove("show"), 3800);
+}
+function triggerTestGiftEvent() {
+  playSfx("COIN_ALERT");
+  const g = state.nodes.find((x) => x.id === "GOAL");
+  if (g) { g.pct = Math.min(100, (g.pct || 35) + 12); g.sub = `${g.pct * 10} / 1000`; renderStageNodes(); }
+  showStageAlert("GIFT TIKTOK LIVE", "SultanBudi99", "Mengirim Gift Paus Samudra (+120 Poin)");
+}
+function triggerTestDonationTts() {
+  playSfx("COIN_ALERT");
+  showStageAlert("SAWERIA RP 50.000", "Kak Raka", "Semangat push rank malam ini Bang!");
+  if ("speechSynthesis" in window && state.ttsEnabled) {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance("Terima kasih Kak Raka atas saweria lima puluh ribu rupiah. Semangat push rank malam ini Bang!");
+    u.lang = "id-ID";
+    u.rate = 1.02;
+    window.speechSynthesis.speak(u);
+  }
+}
+
+function toggleMasterBroadcast() {
+  state.isLive = !state.isLive;
+  const btn = document.getElementById("btnMasterLive");
+  btn.textContent = state.isLive ? "AKHIRI SIARAN LIVE" : "MULAI SIARAN LIVE";
+  btn.className = state.isLive ? "ds-btn primary" : "ds-btn danger";
+  if (!state.isLive) state.liveSeconds = 0;
+  updateFloatingTelemetry();
+}
+setInterval(() => {
+  if (state.isLive) { state.liveSeconds++; updateFloatingTelemetry(); }
+}, 1000);
+
+function cycleStudioTheme() {
+  const order = state.tier === "FREE" ? ["dark", "light"] : ["dark", "light", "gold"];
+  state.theme = order[(order.indexOf(state.theme) + 1) % order.length];
+  document.documentElement.setAttribute("data-theme", state.theme);
+  const names = { dark: "Dark", light: "Light", gold: "Gold VIP" };
+  document.getElementById("btnCycleTheme").textContent = "Tema: " + names[state.theme];
+}
+
+function toggleProSwitch(key) {
+  if (state.tier === "FREE" && (key === "simulcast" || key === "cleanwm")) {
+    openSaasModal();
+    return;
+  }
+  if (key === "tts") state.ttsEnabled = !state.ttsEnabled;
+  if (key === "simulcast") state.simulcast = !state.simulcast;
+  if (key === "cleanwm") state.cleanWatermark = !state.cleanWatermark;
+  document.getElementById("sw_tts").classList.toggle("on", state.ttsEnabled);
+  document.getElementById("sw_simulcast").classList.toggle("on", state.simulcast);
+  document.getElementById("sw_cleanwm").classList.toggle("on", state.cleanWatermark);
+  renderStageNodes();
+}
+
+/* 7. REAL LIVE PAKASIR API v2 QRIS CHECKOUT + MATRIX RENDERER + POLLING */
+function openSaasModal() { document.getElementById("saasModal").classList.add("open"); }
+function closeSaasModal() {
+  document.getElementById("saasModal").classList.remove("open");
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+function pickPlan(planId) {
+  state.selectedPlan = planId;
+  document.querySelectorAll(".plan-box").forEach((b) => b.classList.toggle("sel", b.dataset.plan === planId));
+}
+function resetCheckoutView() {
+  document.getElementById("checkoutStepSelect").style.display = "block";
+  document.getElementById("checkoutStepPay").style.display = "none";
+}
+
+function drawFinderPattern(ctx, x, y, mod) {
+  ctx.fillStyle = "#000"; ctx.fillRect(x * mod, y * mod, 7 * mod, 7 * mod);
+  ctx.fillStyle = "#fff"; ctx.fillRect((x + 1) * mod, (y + 1) * mod, 5 * mod, 5 * mod);
+  ctx.fillStyle = "#000"; ctx.fillRect((x + 2) * mod, (y + 2) * mod, 3 * mod, 3 * mod);
+}
+function renderQrVisualCanvas(payload) {
+  const cv = document.getElementById("qrisMatrixCanvas");
+  const ctx = cv.getContext("2d");
+  const cells = 29;
+  const mod = Math.floor(cv.width / cells);
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  let hash = 2166136261;
+  for (let i = 0; i < payload.length; i++) {
+    hash ^= payload.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  ctx.fillStyle = "#000";
+  for (let r = 0; r < cells; r++) {
+    for (let c = 0; c < cells; c++) {
+      const inFinder = (r < 8 && c < 8) || (r < 8 && c >= cells - 8) || (r >= cells - 8 && c < 8);
+      if (inFinder) continue;
+      hash ^= (hash << 13); hash ^= (hash >>> 17); hash ^= (hash << 5);
+      if ((hash & 1) === 1) ctx.fillRect(c * mod, r * mod, mod, mod);
+    }
+  }
+  drawFinderPattern(ctx, 0, 0, mod);
+  drawFinderPattern(ctx, cells - 7, 0, mod);
+  drawFinderPattern(ctx, 0, cells - 7, mod);
+}
+
+function formatIdr(n) {
+  return "Rp " + Number(n || 0).toLocaleString("id-ID");
+}
+
+function activateTierUi(tier, token) {
+  state.tier = tier;
+  state.licenseToken = token || "";
+  state.cleanWatermark = true;
+  document.getElementById("sw_cleanwm").classList.add("on");
+  const badge = document.getElementById("tierBadge");
+  badge.textContent = "AKTIF: " + tier;
+  badge.classList.add("pro");
+  renderStageNodes();
+  closeSaasModal();
+  showStageAlert("LISENSI PRO AKTIF", "Paket " + tier, "Seluruh fitur eksklusif & tanpa watermark telah terbuka!");
+}
+
+async function createLivePakasirOrder() {
+  const btn = document.getElementById("btnCreateInvoice");
+  btn.disabled = true;
+  btn.textContent = "MENGHUBUNGKAN KE SERVER PAKASIR v2...";
+  try {
+    const resp = await fetch(resolveApiBase() + "/api/saas/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        planId: state.selectedPlan,
+        deviceId: "web-studio-client",
+        promoCode: document.getElementById("chkPromo").value.trim(),
+        email: document.getElementById("chkEmail").value.trim()
+      })
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || "Gagal membuat order");
+    const order = data.order;
+    state.activeOrder = order;
+
+    if (order.status === "completed" && order.licenseToken) {
+      activateTierUi(order.planId, order.licenseToken);
+      return;
+    }
+
+    document.getElementById("checkoutStepSelect").style.display = "none";
+    document.getElementById("checkoutStepPay").style.display = "block";
+    document.getElementById("invLiveTag").textContent = order.gatewayLive
+      ? `LIVE PAKASIR API v2 • TXN #${order.txnId}`
+      : `INVOICE #${order.orderId}`;
+    document.getElementById("invAmountLabel").textContent =
+      `${formatIdr(order.totalPayment)} (Termasuk Biaya ${formatIdr(order.fee)})`;
+    document.getElementById("invTxnMeta").textContent = order.paymentUrl || order.orderId;
+    document.getElementById("btnOpenPakasirUrl").href = order.paymentUrl || "#";
+    document.getElementById("btnVerifyNow").textContent = order.isSandbox
+      ? "Konfirmasi Lunas via API Resmi Pakasir (Proyek Sandbox)"
+      : "Saya Sudah Scan & Bayar — Cek Status Sekarang";
+    const qrImg = document.getElementById("qrisScannableImg");
+    const qrCv = document.getElementById("qrisMatrixCanvas");
+    if (order.qrSvgDataUrl) {
+      qrImg.src = order.qrSvgDataUrl;
+      qrImg.style.display = "block";
+      qrCv.style.display = "none";
+    } else {
+      qrImg.style.display = "none";
+      qrCv.style.display = "inline-block";
+      renderQrVisualCanvas(order.qrisString || order.paymentUrl || order.orderId);
+    }
+
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(async () => {
+      if (!state.activeOrder) return;
+      const r = await fetch(`${resolveApiBase()}/api/saas/order/${encodeURIComponent(state.activeOrder.orderId)}?orderToken=${encodeURIComponent(state.activeOrder.orderToken || "")}`);
+      if (r.ok) {
+        const j = await r.json();
+        if (j.order && j.order.status === "completed" && j.order.licenseToken) {
+          activateTierUi(j.order.planId, j.order.licenseToken);
+        }
+      }
+    }, 4500);
+  } catch (err) {
+    document.getElementById("cloudConnStatus").textContent = "Info: " + err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "BUAT INVOICE QRIS PAKASIR SEKARANG";
+  }
+}
+
+async function confirmPakasirPaymentNow() {
+  if (!state.activeOrder) return;
+  const btn = document.getElementById("btnVerifyNow");
+  btn.textContent = "MEMVERIFIKASI KE SERVER PAKASIR...";
+  try {
+    const resp = await fetch(resolveApiBase() + "/api/saas/pakasir/pay-sandbox", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        orderId: state.activeOrder.orderId,
+        txnId: state.activeOrder.txnId,
+        orderToken: state.activeOrder.orderToken
+      })
+    });
+    const data = await resp.json();
+    if (data.order && data.order.status === "completed") {
+      activateTierUi(data.order.planId, data.order.licenseToken);
+    }
+  } catch (e) {
+    btn.textContent = "Coba Verifikasi Lagi";
+  }
+}
+
+function escapeHtml(s) {
+  return String(s || "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+renderStageNodes();
+refreshStageBackdrop();
+</script>
 </body>
 </html>

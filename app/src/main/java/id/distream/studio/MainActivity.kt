@@ -3,6 +3,7 @@ package id.distream.studio
 import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
@@ -19,7 +20,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import id.distream.studio.model.StreamStatus
+import androidx.core.content.ContextCompat
 import id.distream.studio.security.StreamKeyVault
 import id.distream.studio.service.DiStreamService
 import id.distream.studio.ui.MainViewModel
@@ -30,14 +31,27 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels()
     private var canDrawOverlayState by mutableStateOf(false)
+    private var hasCameraPermState by mutableStateOf(false)
+    private var pendingFloatingTestAfterPerm by mutableStateOf(false)
 
     private val mediaProjectionManager by lazy {
         getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
     }
 
+    private val cameraOnlyPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { grants ->
+        hasCameraPermState = grants[Manifest.permission.CAMERA] == true ||
+            ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+    }
+
     private val runtimePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { _ ->
+        hasCameraPermState = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
         requestScreenCaptureAndGoLive()
     }
 
@@ -62,22 +76,37 @@ class MainActivity : ComponentActivity() {
                 ).show()
             }
         } else {
-            Toast.makeText(this, "Izin rekam layar dibatalkan", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Izin tangkap layar dibatalkan", Toast.LENGTH_SHORT).show()
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        canDrawOverlayState = Settings.canDrawOverlays(this)
+        refreshPermissionFlags()
 
         startService(Intent(this, DiStreamService::class.java))
+
+        // Minta izin Kamera & Mikrofon langsung saat pembukaan agar Live Stage Preview & Mic langsung aktif!
+        if (!hasCameraPermState) {
+            cameraOnlyPermissionLauncher.launch(
+                buildList {
+                    add(Manifest.permission.CAMERA)
+                    add(Manifest.permission.RECORD_AUDIO)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        add(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                }.toTypedArray()
+            )
+        }
 
         setContent {
             val settings by viewModel.settings.collectAsState()
             val runtimeState by viewModel.runtimeState.collectAsState()
             val pendingOrder by viewModel.pendingOrder.collectAsState()
             val saasNotice by viewModel.saasNotice.collectAsState()
+            val localAlert by viewModel.localPreviewAlert.collectAsState()
+            val isCreatingOrder by viewModel.isCreatingOrder.collectAsState()
 
             LaunchedEffect(settings.protectAppWindowFromCapture) {
                 StreamKeyVault.applyWindowScreenCaptureGuard(
@@ -92,8 +121,11 @@ class MainActivity : ComponentActivity() {
                     runtimeState = runtimeState,
                     pendingOrder = pendingOrder,
                     saasNotice = saasNotice,
+                    localAlertBanner = localAlert,
+                    isCreatingOrder = isCreatingOrder,
                     hasOverlayPermission = canDrawOverlayState,
-                    onToggleTheme = viewModel::toggleThemeMode,
+                    hasCameraPermission = hasCameraPermState,
+                    onToggleTheme = viewModel::cycleThemeMode,
                     onUpdateSettings = viewModel::updateSettings,
                     onStartCheckout = viewModel::startSaasCheckout,
                     onConfirmOrderPaid = viewModel::confirmPendingOrderPayment,
@@ -101,15 +133,24 @@ class MainActivity : ComponentActivity() {
                     onRedeemLicenseToken = viewModel::redeemManualLicenseToken,
                     onSaveReplayClip = viewModel::saveInstantReplayClip,
                     onAddCustomText = viewModel::addCustomTextLayer,
-                    onMoveCustomText = viewModel::updateCustomTextPosition,
-                    onToggleCustomText = viewModel::toggleCustomTextVisibility,
+                    onUpdateCustomText = viewModel::updateCustomTextLayer,
                     onDeleteCustomText = viewModel::removeCustomTextLayer,
+                    onResetOverlayLayout = viewModel::resetAllOverlayPositions,
                     onSelectScene = viewModel::selectScene,
                     onPlaySoundFx = viewModel::playSoundFx,
                     onStopAllSoundFx = viewModel::stopAllSoundFx,
                     onToggleCensorBeep = viewModel::setLiveCensorBeep,
                     onTriggerPanic = viewModel::triggerPanicBlackout,
-                    onRequestOverlayPermission = { openOverlayPermissionScreen() },
+                    onToggleFloatingTest = {
+                        viewModel.toggleFloatingTestWindow()
+                    },
+                    onRequestOverlayPermission = {
+                        pendingFloatingTestAfterPerm = true
+                        openOverlayPermissionScreen()
+                    },
+                    onRequestCameraPermission = {
+                        cameraOnlyPermissionLauncher.launch(arrayOf(Manifest.permission.CAMERA))
+                    },
                     onStartLiveClick = { validateAndStartLiveFlow() },
                     onStopLiveClick = viewModel::stopLiveStream,
                     onToggleMuteClick = viewModel::toggleMicMute,
@@ -130,7 +171,19 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        refreshPermissionFlags()
+        if (pendingFloatingTestAfterPerm && canDrawOverlayState) {
+            pendingFloatingTestAfterPerm = false
+            viewModel.toggleFloatingTestWindow()
+        }
+    }
+
+    private fun refreshPermissionFlags() {
         canDrawOverlayState = Settings.canDrawOverlays(this)
+        hasCameraPermState = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun validateAndStartLiveFlow() {
@@ -138,7 +191,7 @@ class MainActivity : ComponentActivity() {
         if (current.streamKey.isBlank()) {
             Toast.makeText(
                 this,
-                "Tempel Stream Key terlebih dahulu di tab Keamanan",
+                "Tempel Stream Key terlebih dahulu di tab Keamanan & Pro",
                 Toast.LENGTH_LONG
             ).show()
             return
@@ -147,7 +200,7 @@ class MainActivity : ComponentActivity() {
         if (current.dndGuardWarning && !StreamKeyVault.isDoNotDisturbActive(this)) {
             Toast.makeText(
                 this,
-                "Pengingat Keamanan: Aktifkan mode Jangan Ganggu (DND) agar pop-up WA/OTP tidak muncul di live",
+                "Pengingat Keamanan: Aktifkan Jangan Ganggu (DND) agar notifikasi pribadi tidak tampil",
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -163,10 +216,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestScreenCaptureAndGoLive() {
-        if (DiStreamService.INSTANCE == null) {
-            startService(Intent(this, DiStreamService::class.java))
-        }
-        screenCaptureLauncher.launch(mediaProjectionManager.createScreenCaptureIntent())
+        val captureIntent = mediaProjectionManager.createScreenCaptureIntent()
+        screenCaptureLauncher.launch(captureIntent)
     }
 
     private fun openOverlayPermissionScreen() {
@@ -175,15 +226,5 @@ class MainActivity : ComponentActivity() {
             Uri.parse("package:$packageName")
         )
         startActivity(intent)
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        val service = DiStreamService.INSTANCE
-        if (isFinishing && service != null &&
-            DiStreamService.runtimeState.value.status == StreamStatus.IDLE
-        ) {
-            stopService(Intent(this, DiStreamService::class.java))
-        }
     }
 }

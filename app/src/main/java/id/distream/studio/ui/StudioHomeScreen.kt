@@ -1,20 +1,16 @@
 package id.distream.studio.ui
 
-import android.view.SurfaceView
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,60 +19,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.BookmarkBorder
-import androidx.compose.material.icons.rounded.CameraAlt
-import androidx.compose.material.icons.rounded.Cameraswitch
-import androidx.compose.material.icons.rounded.DarkMode
-import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FiberManualRecord
-import androidx.compose.material.icons.rounded.FlashlightOn
-import androidx.compose.material.icons.rounded.Forum
-import androidx.compose.material.icons.rounded.GraphicEq
-import androidx.compose.material.icons.rounded.GridOn
-import androidx.compose.material.icons.rounded.Layers
-import androidx.compose.material.icons.rounded.LightMode
-import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.Mic
-import androidx.compose.material.icons.rounded.MicOff
-import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.NotificationsActive
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.QrCode2
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Replay30
-import androidx.compose.material.icons.rounded.Security
-import androidx.compose.material.icons.rounded.Shield
-import androidx.compose.material.icons.rounded.Stop
-import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material.icons.rounded.VisibilityOff
-import androidx.compose.material.icons.rounded.VolumeOff
-import androidx.compose.material.icons.rounded.WorkspacePremium
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -85,41 +32,51 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
+import id.distream.studio.model.AudioCaptureMode
+import id.distream.studio.model.ColorGradePreset
 import id.distream.studio.model.LoveTapPreset
 import id.distream.studio.model.OverlayFramePreset
 import id.distream.studio.model.RtmpDestinationPreset
 import id.distream.studio.model.SaasPlanTier
 import id.distream.studio.model.SoundFxPad
-import id.distream.studio.model.StreamOrientation
 import id.distream.studio.model.StreamRuntimeState
 import id.distream.studio.model.StreamSettings
 import id.distream.studio.model.StreamStatus
 import id.distream.studio.model.StudioScene
-import id.distream.studio.model.StudioThemeMode
 import id.distream.studio.model.VideoCodecOption
 import id.distream.studio.model.VideoQualityPreset
 import id.distream.studio.saas.SaasCheckoutOrder
 import id.distream.studio.saas.SaasSubscriptionManager
-import id.distream.studio.service.DiStreamService
-import id.distream.studio.ui.theme.BrandBlue
-import id.distream.studio.ui.theme.CautionAmber
-import id.distream.studio.ui.theme.HealthyGreen
-import id.distream.studio.ui.theme.LiveRed
+import id.distream.studio.security.StreamKeyVault
+import id.distream.studio.ui.theme.LocalDiStreamPalette
 import kotlin.math.roundToInt
+
+private enum class StudioDeckTab(val title: String) {
+    PRESETS("Preset & Video"),
+    OVERLAY("Overlay & Frame"),
+    AUDIO("SoundFX & Mic"),
+    FLOATING("Melayang & Event"),
+    VAULT_SAAS("Keamanan & Pro")
+}
+
+private fun formatRupiah(amount: Int): String {
+    if (amount <= 0) return "Gratis"
+    val raw = amount.toString()
+    val sb = StringBuilder("Rp ")
+    raw.forEachIndexed { idx, c ->
+        sb.append(c)
+        val rem = raw.length - 1 - idx
+        if (rem > 0 && rem % 3 == 0) sb.append('.')
+    }
+    return sb.toString()
+}
 
 @Composable
 fun StudioHomeScreen(
@@ -127,7 +84,10 @@ fun StudioHomeScreen(
     runtimeState: StreamRuntimeState,
     pendingOrder: SaasCheckoutOrder?,
     saasNotice: String,
+    localAlertBanner: String,
+    isCreatingOrder: Boolean,
     hasOverlayPermission: Boolean,
+    hasCameraPermission: Boolean,
     onToggleTheme: () -> Unit,
     onUpdateSettings: ((StreamSettings) -> StreamSettings) -> Unit,
     onStartCheckout: (SaasPlanTier, String) -> Unit,
@@ -136,15 +96,17 @@ fun StudioHomeScreen(
     onRedeemLicenseToken: (String) -> Unit,
     onSaveReplayClip: () -> Unit,
     onAddCustomText: (String) -> Unit,
-    onMoveCustomText: (String, Int, Int) -> Unit,
-    onToggleCustomText: (String) -> Unit,
+    onUpdateCustomText: (id: String, content: String?, x: Int?, y: Int?, size: Int?, hex: String?, pill: Boolean?) -> Unit,
     onDeleteCustomText: (String) -> Unit,
+    onResetOverlayLayout: () -> Unit,
     onSelectScene: (StudioScene) -> Unit,
     onPlaySoundFx: (SoundFxPad) -> Unit,
     onStopAllSoundFx: () -> Unit,
     onToggleCensorBeep: (Boolean) -> Unit,
     onTriggerPanic: () -> Unit,
+    onToggleFloatingTest: () -> Unit,
     onRequestOverlayPermission: () -> Unit,
+    onRequestCameraPermission: () -> Unit,
     onStartLiveClick: () -> Unit,
     onStopLiveClick: () -> Unit,
     onToggleMuteClick: () -> Unit,
@@ -159,1582 +121,1125 @@ fun StudioHomeScreen(
     onTestGiftClick: () -> Unit,
     onTestDonationClick: () -> Unit
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
-    var showStopPinDialog by remember { mutableStateOf(false) }
-    var pinInput by remember { mutableStateOf("") }
-
+    val p = LocalDiStreamPalette.current
+    val context = LocalContext.current
     val activeTier = SaasSubscriptionManager.resolveActiveTier(settings)
-    val isLive = runtimeState.status == StreamStatus.LIVE ||
+    var currentTab by remember { mutableStateOf(StudioDeckTab.PRESETS) }
+    var showSaasModal by remember { mutableStateOf(false) }
+    var showStopPinModal by remember { mutableStateOf(false) }
+    var enteredStopPin by remember { mutableStateOf("") }
+    var canvasExpanded by remember { mutableStateOf(true) }
+
+    val isLiveOrConnecting = runtimeState.status == StreamStatus.LIVE ||
         runtimeState.status == StreamStatus.CONNECTING ||
         runtimeState.status == StreamStatus.RECONNECTING
 
-    // QRIS Payment Checkout Dialog (Pakasir Gateway)
-    if (pendingOrder != null) {
-        AlertDialog(
-            onDismissRequest = onDismissOrder,
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(Icons.Rounded.QrCode2, contentDescription = null, tint = BrandBlue)
-                    Text("Pembayaran QRIS — ${pendingOrder.planTier.title}", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                }
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "Order ID: ${pendingOrder.orderId}\nTotal Tagihan: Rp ${pendingOrder.totalPaymentIdr} (termasuk biaya layanan QRIS)",
-                        fontSize = 12.5.sp
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(p.bgCanvas)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // 1. HEADER STUDIO CUSTOM (NON-MATERIAL, TACTILE CREATOR BAR)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(p.surfaceLow)
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+            ) {
+                DsLogoMark(size = 32.dp)
+                Spacer(Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        DsText("DiStream Studio", size = 15.sp, weight = FontWeight.Bold)
+                        Spacer(Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(
+                                    if (activeTier == SaasPlanTier.FREE) p.surfaceHigh
+                                    else Color(0xFFD97706).copy(alpha = 0.22f)
+                                )
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            DsText(
+                                text = activeTier.badge,
+                                size = 9.5.sp,
+                                weight = FontWeight.Bold,
+                                color = if (activeTier == SaasPlanTier.FREE) p.textSecondary else Color(0xFFFBBF24)
+                            )
+                        }
+                    }
+                    DsText(
+                        text = runtimeState.statusMessage,
+                        size = 11.sp,
+                        color = if (isLiveOrConnecting) p.okEmerald else p.textMuted,
+                        maxLines = 1
                     )
+                }
+
+                DsButton(
+                    label = if (runtimeState.isFloatingTestActive) "Tutup Melayang" else "Tes Melayang",
+                    compact = true,
+                    active = runtimeState.isFloatingTestActive,
+                    onClick = {
+                        if (!hasOverlayPermission) onRequestOverlayPermission()
+                        else onToggleFloatingTest()
+                    }
+                )
+                Spacer(Modifier.width(6.dp))
+                DsButton(
+                    label = settings.themeMode.label.substringBefore(" "),
+                    compact = true,
+                    onClick = onToggleTheme
+                )
+                Spacer(Modifier.width(6.dp))
+                DsButton(
+                    label = if (activeTier == SaasPlanTier.FREE) "Pro" else "VIP",
+                    compact = true,
+                    variant = DsBtnVariant.VIP_GOLD,
+                    onClick = { showSaasModal = true }
+                )
+            }
+
+            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(p.borderSubtle))
+
+            // 2. ISI UTAMA SCROLLABLE: LIVE WYSIWYG STAGE + DECK KONTROL KUSTOM
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(11.dp)
+            ) {
+                if (saasNotice.isNotBlank()) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(12.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(p.accentPrimary.copy(alpha = 0.14f))
+                            .border(1.dp, p.accentPrimary.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("String QRIS / Link Pakasir:", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                            Text(
-                                pendingOrder.hostedPaymentUrl,
-                                fontSize = 11.sp,
-                                color = BrandBlue
-                            )
-                        }
-                    }
-                    Text(
-                        "Scan QRIS melalui GoPay, OVO, DANA, ShopeePay, atau Mobile Banking, lalu tekan tombol Verifikasi Pembayaran.",
-                        fontSize = 11.5.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            },
-            confirmButton = {
-                Button(onClick = onConfirmOrderPaid) {
-                    Text("Verifikasi Lunas")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismissOrder) {
-                    Text("Batal")
-                }
-            }
-        )
-    }
-
-    if (showStopPinDialog) {
-        AlertDialog(
-            onDismissRequest = { showStopPinDialog = false },
-            title = { Text("Konfirmasi Hentikan Siaran", fontWeight = FontWeight.Bold) },
-            text = {
-                Column {
-                    Text(
-                        "Masukkan PIN keamanan (${settings.stopStreamPin.length} digit) agar siaran tidak tertutup akibat salah sentuh.",
-                        fontSize = 13.sp
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    OutlinedTextField(
-                        value = pinInput,
-                        onValueChange = { pinInput = it },
-                        label = { Text("PIN Keamanan") },
-                        visualTransformation = PasswordVisualTransformation(),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (pinInput == settings.stopStreamPin) {
-                            showStopPinDialog = false
-                            pinInput = ""
-                            onStopLiveClick()
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = LiveRed)
-                ) {
-                    Text("Hentikan Live")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showStopPinDialog = false; pinInput = "" }) {
-                    Text("Batal")
-                }
-            }
-        )
-    }
-
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            DiStreamHeaderBar(
-                settings = settings,
-                activeTier = activeTier,
-                runtimeState = runtimeState,
-                isLive = isLive,
-                onOpenProTab = { selectedTab = 2 },
-                onToggleTheme = onToggleTheme,
-                onToggleSafeZone = {
-                    onUpdateSettings { it.copy(showSafeZoneGuide = !it.showSafeZoneGuide) }
-                },
-                onToggleShield = onToggleShieldClick
-            )
-        },
-        bottomBar = {
-            DiStreamBottomBar(
-                selectedTab = selectedTab,
-                onSelectTab = { selectedTab = it },
-                isLive = isLive,
-                isMuted = runtimeState.isMicMuted,
-                isRecording = runtimeState.isRecordingLocal,
-                onStartLive = onStartLiveClick,
-                onRequestStopLive = {
-                    if (settings.confirmPinBeforeStop) {
-                        showStopPinDialog = true
-                    } else {
-                        onStopLiveClick()
-                    }
-                },
-                onToggleMute = onToggleMuteClick,
-                onToggleRecord = onToggleRecordClick
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            LiveCanvasStage(
-                settings = settings,
-                activeTier = activeTier,
-                isLive = isLive
-            )
-
-            SceneSelectorRow(
-                activeScene = settings.activeScene,
-                activeTier = activeTier,
-                onSelectScene = onSelectScene
-            )
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(horizontal = 16.dp)
-            ) {
-                when (selectedTab) {
-                    0 -> OverlayAndTextTab(
-                        settings = settings,
-                        activeTier = activeTier,
-                        hasOverlayPermission = hasOverlayPermission,
-                        onUpdateSettings = onUpdateSettings,
-                        onAddCustomText = onAddCustomText,
-                        onMoveCustomText = onMoveCustomText,
-                        onToggleCustomText = onToggleCustomText,
-                        onDeleteCustomText = onDeleteCustomText,
-                        onRequestOverlayPermission = onRequestOverlayPermission,
-                        onAddGoal = onAddGoalProgress,
-                        onReloadCompositor = onReloadOverlayClick,
-                        onTestGift = onTestGiftClick,
-                        onOpenUpgrade = { selectedTab = 2 }
-                    )
-                    1 -> AudioAndSoundFxTab(
-                        settings = settings,
-                        activeTier = activeTier,
-                        runtimeState = runtimeState,
-                        onUpdateSettings = onUpdateSettings,
-                        onPlaySoundFx = onPlaySoundFx,
-                        onStopAllSoundFx = onStopAllSoundFx,
-                        onToggleCensorBeep = onToggleCensorBeep,
-                        onToggleMute = onToggleMuteClick,
-                        onOpenUpgrade = { selectedTab = 2 }
-                    )
-                    2 -> SaasProSubscriptionTab(
-                        settings = settings,
-                        activeTier = activeTier,
-                        runtimeState = runtimeState,
-                        saasNotice = saasNotice,
-                        onUpdateSettings = onUpdateSettings,
-                        onStartCheckout = onStartCheckout,
-                        onRedeemLicenseToken = onRedeemLicenseToken,
-                        onSaveReplayClip = onSaveReplayClip
-                    )
-                    3 -> BroadcastAndSecurityTab(
-                        settings = settings,
-                        runtimeState = runtimeState,
-                        onUpdateSettings = onUpdateSettings,
-                        onTriggerPanic = onTriggerPanic,
-                        onSnapshot = onCaptureSnapshotClick,
-                        onAddMarker = onAddMarkerClick,
-                        onFlipCamera = onSwitchCameraClick,
-                        onToggleTorch = onToggleTorchClick
-                    )
-                    4 -> LiveInteractionTab(
-                        settings = settings,
-                        runtimeState = runtimeState,
-                        onUpdateSettings = onUpdateSettings,
-                        onTestGift = onTestGiftClick,
-                        onTestDonation = onTestDonationClick
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun DiStreamLogoMark(modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier.size(30.dp)) {
-        drawRoundRect(
-            color = BrandBlue,
-            cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx()),
-            size = size
-        )
-        val stroke = 2.6.dp.toPx()
-        drawArc(
-            color = Color.White,
-            startAngle = -90f,
-            sweepAngle = 180f,
-            useCenter = false,
-            topLeft = Offset(size.width * 0.22f, size.height * 0.24f),
-            size = Size(size.width * 0.36f, size.height * 0.52f),
-            style = Stroke(width = stroke, cap = StrokeCap.Round)
-        )
-        drawLine(
-            color = Color.White,
-            start = Offset(size.width * 0.40f, size.height * 0.24f),
-            end = Offset(size.width * 0.40f, size.height * 0.76f),
-            strokeWidth = stroke,
-            cap = StrokeCap.Round
-        )
-        drawArc(
-            color = Color.White.copy(alpha = 0.72f),
-            startAngle = -45f,
-            sweepAngle = 90f,
-            useCenter = false,
-            topLeft = Offset(size.width * 0.46f, size.height * 0.28f),
-            size = Size(size.width * 0.34f, size.height * 0.44f),
-            style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
-        )
-    }
-}
-
-@Composable
-private fun DiStreamHeaderBar(
-    settings: StreamSettings,
-    activeTier: SaasPlanTier,
-    runtimeState: StreamRuntimeState,
-    isLive: Boolean,
-    onOpenProTab: () -> Unit,
-    onToggleTheme: () -> Unit,
-    onToggleSafeZone: () -> Unit,
-    onToggleShield: () -> Unit
-) {
-    val hrs = runtimeState.uptimeSeconds / 3600
-    val mins = (runtimeState.uptimeSeconds % 3600) / 60
-    val secs = runtimeState.uptimeSeconds % 60
-    val duration = String.format("%02d:%02d:%02d", hrs, mins, secs)
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .statusBarsPadding()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                DiStreamLogoMark()
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("DiStream", fontWeight = FontWeight.Bold, fontSize = 15.5.sp)
-                        Box(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(
-                                    if (activeTier == SaasPlanTier.FREE) MaterialTheme.colorScheme.surfaceVariant
-                                    else CautionAmber.copy(alpha = 0.2f)
-                                )
-                                .clickable { onOpenProTab() }
-                                .padding(horizontal = 8.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = if (activeTier == SaasPlanTier.FREE) "Upgrade Pro" else activeTier.title,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (activeTier == SaasPlanTier.FREE) BrandBlue else CautionAmber
-                            )
-                        }
-                        if (isLive) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .background(LiveRed)
-                                    .padding(horizontal = 7.dp, vertical = 2.dp)
-                            ) {
-                                Text("Live $duration", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                            }
-                        }
-                    }
-                    Text(
-                        text = "${runtimeState.currentBitrateKbps} kbps • ${settings.qualityPreset.shortCode} • ${runtimeState.deviceTempCelsius.toInt()}°C",
-                        fontSize = 11.5.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                IconButton(onClick = onToggleSafeZone, modifier = Modifier.size(34.dp)) {
-                    Icon(
-                        imageVector = Icons.Rounded.GridOn,
-                        contentDescription = "Batas Aman UI TikTok",
-                        tint = if (settings.showSafeZoneGuide) BrandBlue else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(19.dp)
-                    )
-                }
-                IconButton(onClick = onToggleShield, modifier = Modifier.size(34.dp)) {
-                    Icon(
-                        imageVector = Icons.Rounded.Shield,
-                        contentDescription = "Layar Privasi",
-                        tint = if (runtimeState.isPrivacyShieldActive) CautionAmber else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(19.dp)
-                    )
-                }
-                IconButton(onClick = onToggleTheme, modifier = Modifier.size(34.dp)) {
-                    Icon(
-                        imageVector = if (settings.themeMode == StudioThemeMode.DARK) Icons.Rounded.LightMode else Icons.Rounded.DarkMode,
-                        contentDescription = "Tema",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(19.dp)
-                    )
-                }
-            }
-        }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-    }
-}
-
-@Composable
-private fun LiveCanvasStage(
-    settings: StreamSettings,
-    activeTier: SaasPlanTier,
-    isLive: Boolean
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(172.dp)
-            .background(MaterialTheme.colorScheme.background)
-            .padding(vertical = 8.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        val ratio = if (settings.orientation.isPortrait) 9f / 16f else 16f / 9f
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .aspectRatio(ratio)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Color(0xFF16181F))
-                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(10.dp))
-        ) {
-            if (isLive) {
-                AndroidView(
-                    factory = { ctx ->
-                        SurfaceView(ctx).also { sv ->
-                            DiStreamService.INSTANCE?.attachStudioPreview(sv)
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
-                DisposableEffect(Unit) {
-                    onDispose { DiStreamService.INSTANCE?.detachStudioPreview() }
-                }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(8.dp),
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (!activeTier.removeWatermark || settings.watermarkVisible) {
-                            Text(
-                                if (!activeTier.removeWatermark) "DiStream Free" else "Pro Clean",
-                                fontSize = 8.sp,
-                                color = Color.White,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(5.dp))
-                                    .background(Color.Black.copy(alpha = 0.55f))
-                                    .padding(horizontal = 6.dp, vertical = 3.dp)
-                            )
-                        }
-                        if (settings.loveTapPreset != LoveTapPreset.NONE) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(Color.Black.copy(alpha = 0.55f))
-                                    .padding(horizontal = 6.dp, vertical = 3.dp)
-                            ) {
-                                Icon(Icons.Rounded.Favorite, contentDescription = null, tint = LiveRed, modifier = Modifier.size(9.dp))
-                                Spacer(Modifier.width(3.dp))
-                                Text("Tap Love", fontSize = 8.sp, color = Color.White)
-                            }
-                        }
-                    }
-
-                    Text(
-                        text = settings.activeScene.label,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White,
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    )
-
-                    if (settings.lowerThirdVisible) {
-                        Text(
-                            text = settings.lowerThirdTickerText,
-                            fontSize = 7.5.sp,
-                            color = Color.White.copy(alpha = 0.85f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Clip,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color.Black.copy(alpha = 0.55f))
-                                .padding(horizontal = 5.dp, vertical = 2.dp)
-                        )
+                        DsText(saasNotice, size = 11.5.sp, color = p.accentSecondary)
                     }
                 }
-            }
 
-            if (settings.showSafeZoneGuide && settings.orientation.isPortrait) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth(0.76f)
-                        .fillMaxHeight(0.27f)
-                        .border(1.dp, CautionAmber.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
-                        .background(CautionAmber.copy(alpha = 0.08f))
-                        .padding(4.dp)
-                ) {
-                    Text("Area Chat TikTok", fontSize = 7.sp, color = CautionAmber)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SceneSelectorRow(
-    activeScene: StudioScene,
-    activeTier: SaasPlanTier,
-    onSelectScene: (StudioScene) -> Unit
-) {
-    LazyRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 16.dp, vertical = 9.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(StudioScene.entries) { scene ->
-            val selected = scene == activeScene
-            val locked = scene.requiresPro && !activeTier.unlockAllScenes
-            val bg by animateColorAsState(
-                if (selected) BrandBlue else MaterialTheme.colorScheme.surfaceVariant,
-                label = "sceneBg"
-            )
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(bg)
-                    .clickable { onSelectScene(scene) }
-                    .padding(horizontal = 13.dp, vertical = 8.dp)
-            ) {
-                Text(
-                    text = if (locked) "${scene.label} (Pro)" else scene.label,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (selected) Color.White else MaterialTheme.colorScheme.onSurface
-                )
-            }
-        }
-    }
-}
-
-/**
- * TAB 2: PUSAT LANGGANAN SAAS (HARIAN, MINGGUAN, BULANAN) & FITUR EKSKLUSIF VIP
- */
-@Composable
-private fun SaasProSubscriptionTab(
-    settings: StreamSettings,
-    activeTier: SaasPlanTier,
-    runtimeState: StreamRuntimeState,
-    saasNotice: String,
-    onUpdateSettings: ((StreamSettings) -> StreamSettings) -> Unit,
-    onStartCheckout: (SaasPlanTier, String) -> Unit,
-    onRedeemLicenseToken: (String) -> Unit,
-    onSaveReplayClip: () -> Unit
-) {
-    var promoCodeInput by remember { mutableStateOf("") }
-    var licenseInput by remember { mutableStateOf("") }
-
-    LazyColumn(
-        contentPadding = PaddingValues(vertical = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            CardPanel(title = "Status Paket Langganan & Analitik Pendapatan") {
+                // Toggle Ringkas / Penuh Panggung Preview
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        Text(
-                            text = "Paket Aktif: ${activeTier.title}",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                            color = if (activeTier == SaasPlanTier.FREE) MaterialTheme.colorScheme.onSurface else BrandBlue
-                        )
-                        val remainingHrs = ((settings.saasExpiresAtMillis - System.currentTimeMillis()) / 3_600_000L).coerceAtLeast(0L)
-                        Text(
-                            text = if (activeTier == SaasPlanTier.FREE) {
-                                "Upgrade mulai Rp 5.000/hari untuk buka fitur eksklusif tanpa watermark"
-                            } else {
-                                "Masa aktif tersisa sekitar $remainingHrs jam"
-                            },
-                            fontSize = 11.5.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                if (saasNotice.isNotBlank()) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(saasNotice, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = HealthyGreen)
-                }
-
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    StatMiniBox("Estimasi Sesi", "Rp ${runtimeState.estimatedIdrRevenue}", Modifier.weight(1f))
-                    StatMiniBox("Peak Bitrate", "${runtimeState.peakBitrateKbps} kbps", Modifier.weight(1f))
-                    StatMiniBox("Klip Replay", "${runtimeState.replayClipsSaved} klip", Modifier.weight(1f))
-                }
-            }
-        }
-
-        item {
-            CardPanel(title = "Pilih Paket Langganan (QRIS Otomatis / Kode Promo)") {
-                OutlinedTextField(
-                    value = promoCodeInput,
-                    onValueChange = { promoCodeInput = it },
-                    label = { Text("Kode Promo / Voucher (Contoh: XYKAL50 atau TRIALVIP)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(10.dp))
-
-                PlanOptionCard(
-                    tier = SaasPlanTier.DAILY,
-                    highlights = "Hapus Watermark 100% • 1080p60 High-Bitrate + HEVC • Full 8 SoundFX • 5 Scene + Subathon Timer",
-                    isCurrent = activeTier == SaasPlanTier.DAILY,
-                    onSubscribe = { onStartCheckout(SaasPlanTier.DAILY, promoCodeInput) }
-                )
-                Spacer(Modifier.height(8.dp))
-                PlanOptionCard(
-                    tier = SaasPlanTier.WEEKLY,
-                    highlights = "Semua fitur Harian + Cloud Multi-Stream Simulcast (Live 1x Upload ke TikTok + YouTube + Twitch hemat kuota 66%) • Replay Instan 30 Detik • Teks Kustom Tanpa Batas",
-                    isCurrent = activeTier == SaasPlanTier.WEEKLY,
-                    onSubscribe = { onStartCheckout(SaasPlanTier.WEEKLY, promoCodeInput) }
-                )
-                Spacer(Modifier.height(8.dp))
-                PlanOptionCard(
-                    tier = SaasPlanTier.MONTHLY,
-                    highlights = "Semua fitur Mingguan + Smart TTS Pembaca Suara Donasi & Gift Otomatis • Cloud Anti-Disconnect Shield 60 Detik (Room TikTok Anti-Putus) • Analitik Pendapatan IDR",
-                    isCurrent = activeTier == SaasPlanTier.MONTHLY,
-                    onSubscribe = { onStartCheckout(SaasPlanTier.MONTHLY, promoCodeInput) }
-                )
-            }
-        }
-
-        item {
-            CardPanel(title = "Fitur Eksklusif Cloud Pro & VIP") {
-                SettingToggleRow(
-                    title = "Cloud Multi-Stream Simulcast (Mingguan / Bulanan)",
-                    subtitle = "1x upload dari HP langsung disiarkan serentak ke TikTok + YouTube + Twitch",
-                    checked = settings.simulcastEnabled && activeTier.allowMultiStreamSimulcast,
-                    onCheckedChange = { v -> onUpdateSettings { it.copy(simulcastEnabled = v) } }
-                )
-                if (settings.simulcastEnabled) {
-                    Spacer(Modifier.height(6.dp))
-                    OutlinedTextField(
-                        value = settings.simulcastYoutubeKey,
-                        onValueChange = { k -> onUpdateSettings { it.copy(simulcastYoutubeKey = k) } },
-                        label = { Text("Stream Key Tambahan YouTube Live") },
-                        visualTransformation = PasswordVisualTransformation(),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                    DsText(
+                        "PANGGUNG LIVE INTERAKTIF (GESER & EDIT LANGSUNG)",
+                        size = 10.5.sp,
+                        weight = FontWeight.Bold,
+                        color = p.textMuted
                     )
-                    Spacer(Modifier.height(6.dp))
-                    OutlinedTextField(
-                        value = settings.simulcastTwitchKey,
-                        onValueChange = { k -> onUpdateSettings { it.copy(simulcastTwitchKey = k) } },
-                        label = { Text("Stream Key Tambahan Twitch") },
-                        visualTransformation = PasswordVisualTransformation(),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                    DsButton(
+                        label = if (canvasExpanded) "Sembunyikan Preview" else "Buka Preview Kanvas",
+                        compact = true,
+                        onClick = { canvasExpanded = !canvasExpanded }
                     )
                 }
 
-                Spacer(Modifier.height(10.dp))
-                SettingToggleRow(
-                    title = "Suara Pintar TTS Pembaca Donasi & Gift (VIP Bulanan)",
-                    subtitle = "Membacakan nama pengirim & pesan Saweria/Gift otomatis dalam Bahasa Indonesia",
-                    checked = settings.smartTtsDonationEnabled && activeTier.allowSmartTtsDonation,
-                    onCheckedChange = { v -> onUpdateSettings { it.copy(smartTtsDonationEnabled = v) } }
-                )
-                Spacer(Modifier.height(10.dp))
-                SettingToggleRow(
-                    title = "Cloud Anti-Disconnect Shield 60s (VIP Bulanan)",
-                    subtitle = "Menjaga room TikTok LIVE tetap aktif saat sinyal HP pindah WiFi ke Data Seluler",
-                    checked = settings.cloudFailoverShieldEnabled && activeTier.allowCloudFailoverShield,
-                    onCheckedChange = { v -> onUpdateSettings { it.copy(cloudFailoverShieldEnabled = v) } }
-                )
-                Spacer(Modifier.height(10.dp))
-                Button(
-                    onClick = onSaveReplayClip,
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth()
+                if (canvasExpanded) {
+                    LiveStudioCanvasStage(
+                        settings = settings,
+                        runtimeState = runtimeState,
+                        activeTier = activeTier,
+                        localAlertBanner = localAlertBanner,
+                        hasCameraPermission = hasCameraPermission,
+                        onRequestCameraPermission = onRequestCameraPermission,
+                        onUpdateSettings = onUpdateSettings,
+                        onSelectScene = onSelectScene,
+                        onAddCustomText = onAddCustomText,
+                        onUpdateCustomText = onUpdateCustomText,
+                        onDeleteCustomText = onDeleteCustomText,
+                        onResetLayout = onResetOverlayLayout,
+                        onSwitchLens = onSwitchCameraClick
+                    )
+                }
+
+                // NAVIGASI TAB STUDIO KUSTOM
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Icon(Icons.Rounded.Replay30, contentDescription = null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Simpan Replay Momen 30 Detik Terakhir")
-                }
-            }
-        }
-
-        item {
-            CardPanel(title = "Aktivasi Token Lisensi Manual / Offline") {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = licenseInput,
-                        onValueChange = { licenseInput = it },
-                        label = { Text("Tempel Token DST1...") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Button(
-                        onClick = {
-                            onRedeemLicenseToken(licenseInput)
-                            licenseInput = ""
-                        },
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text("Aktifkan")
+                    StudioDeckTab.entries.forEach { tab ->
+                        DsButton(
+                            label = tab.title,
+                            compact = true,
+                            active = currentTab == tab,
+                            onClick = { currentTab = tab }
+                        )
                     }
                 }
+
+                // ISI TAB AKTIF
+                when (currentTab) {
+                    StudioDeckTab.PRESETS -> PresetsAndEncoderDeck(
+                        settings = settings,
+                        activeTier = activeTier,
+                        onUpdateSettings = onUpdateSettings,
+                        onOpenUpgrade = { showSaasModal = true }
+                    )
+                    StudioDeckTab.OVERLAY -> OverlayAndCompositorDeck(
+                        settings = settings,
+                        runtimeState = runtimeState,
+                        activeTier = activeTier,
+                        onUpdateSettings = onUpdateSettings,
+                        onAddGoalProgress = onAddGoalProgress,
+                        onReloadOverlayClick = onReloadOverlayClick,
+                        onOpenUpgrade = { showSaasModal = true }
+                    )
+                    StudioDeckTab.AUDIO -> AudioAndSoundFxDeck(
+                        settings = settings,
+                        runtimeState = runtimeState,
+                        activeTier = activeTier,
+                        onUpdateSettings = onUpdateSettings,
+                        onPlaySoundFx = onPlaySoundFx,
+                        onStopAllSoundFx = onStopAllSoundFx,
+                        onToggleCensorBeep = onToggleCensorBeep,
+                        onOpenUpgrade = { showSaasModal = true }
+                    )
+                    StudioDeckTab.FLOATING -> FloatingAndLiveEventDeck(
+                        settings = settings,
+                        runtimeState = runtimeState,
+                        hasOverlayPermission = hasOverlayPermission,
+                        onUpdateSettings = onUpdateSettings,
+                        onToggleFloatingTest = onToggleFloatingTest,
+                        onRequestOverlayPermission = onRequestOverlayPermission,
+                        onTestGiftClick = onTestGiftClick,
+                        onTestDonationClick = onTestDonationClick,
+                        onSaveReplayClip = onSaveReplayClip,
+                        onToggleRecordClick = onToggleRecordClick,
+                        onCaptureSnapshotClick = onCaptureSnapshotClick,
+                        onAddMarkerClick = onAddMarkerClick,
+                        onToggleTorchClick = onToggleTorchClick
+                    )
+                    StudioDeckTab.VAULT_SAAS -> SecurityAndProCloudDeck(
+                        settings = settings,
+                        runtimeState = runtimeState,
+                        activeTier = activeTier,
+                        onUpdateSettings = onUpdateSettings,
+                        onOpenUpgrade = { showSaasModal = true },
+                        onRedeemToken = onRedeemLicenseToken,
+                        onTriggerPanic = onTriggerPanic
+                    )
+                }
+
+                Spacer(Modifier.height(12.dp))
             }
+
+            // 3. BOTTOM MASTER BROADCAST ACTION BAR (MULAI LIVE / STOP / MUTE / PRIVASI / MELAYANG)
+            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(p.borderSubtle))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(p.surfaceLow)
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
+            ) {
+                DsButton(
+                    label = if (runtimeState.isMicMuted) "Mic Off" else "Mic On",
+                    compact = true,
+                    active = !runtimeState.isMicMuted,
+                    onClick = onToggleMuteClick
+                )
+                DsButton(
+                    label = "Privasi",
+                    compact = true,
+                    active = runtimeState.isPrivacyShieldActive,
+                    onClick = onToggleShieldClick
+                )
+                if (!isLiveOrConnecting) {
+                    DsButton(
+                        label = "MULAI SIARAN LIVE",
+                        variant = DsBtnVariant.LIVE_DANGER,
+                        modifier = Modifier.weight(1f),
+                        onClick = onStartLiveClick
+                    )
+                } else {
+                    val clock = String.format(
+                        "%02d:%02d",
+                        runtimeState.uptimeSeconds / 60,
+                        runtimeState.uptimeSeconds % 60
+                    )
+                    DsButton(
+                        label = "AKHIRI LIVE ($clock)",
+                        variant = DsBtnVariant.PRIMARY,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            if (settings.confirmPinBeforeStop) {
+                                enteredStopPin = ""
+                                showStopPinModal = true
+                            } else {
+                                onStopLiveClick()
+                            }
+                        }
+                    )
+                }
+            }
+        }
+
+        // MODAL PIN ANTI-SALAH PENCET STOP LIVE
+        if (showStopPinModal) {
+            DsModalScrim(onDismiss = { showStopPinModal = false }) {
+                DsText("Konfirmasi PIN Pengaman Siaran", size = 15.sp, weight = FontWeight.Bold)
+                Spacer(Modifier.height(6.dp))
+                DsText(
+                    "Masukkan PIN pengaman (${settings.stopStreamPin.length} digit) untuk menghentikan siaran live.",
+                    size = 12.sp,
+                    color = p.textMuted
+                )
+                Spacer(Modifier.height(12.dp))
+                DsInputField(
+                    label = "PIN Pengaman",
+                    value = enteredStopPin,
+                    placeholder = "Masukkan PIN (default: 1234)",
+                    onValueChange = { enteredStopPin = it },
+                    isSecret = true,
+                    keyboardType = KeyboardType.NumberPassword
+                )
+                Spacer(Modifier.height(14.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DsButton("Batal", modifier = Modifier.weight(1f), onClick = { showStopPinModal = false })
+                    DsButton(
+                        label = "Hentikan Siaran",
+                        variant = DsBtnVariant.LIVE_DANGER,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            if (enteredStopPin == settings.stopStreamPin) {
+                                showStopPinModal = false
+                                onStopLiveClick()
+                            }
+                        }
+                    )
+                }
+            }
+        }
+
+        // MODAL PAKASIR API v2 REAL QRIS CHECKOUT & LANGGANAN PRO
+        if (showSaasModal || pendingOrder != null) {
+            SaasCheckoutSheetModal(
+                activeTier = activeTier,
+                settings = settings,
+                pendingOrder = pendingOrder,
+                isCreatingOrder = isCreatingOrder,
+                onUpdateEmail = { em -> onUpdateSettings { it.copy(subscriberEmail = em) } },
+                onStartCheckout = onStartCheckout,
+                onOpenBrowserCheckout = { url ->
+                    runCatching {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    }
+                },
+                onConfirmPaid = onConfirmOrderPaid,
+                onClose = {
+                    showSaasModal = false
+                    onDismissOrder()
+                }
+            )
         }
     }
 }
 
 @Composable
-private fun StatMiniBox(label: String, value: String, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(10.dp)
-    ) {
-        Text(label, fontSize = 10.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(2.dp))
-        Text(value, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+private fun PresetsAndEncoderDeck(
+    settings: StreamSettings,
+    activeTier: SaasPlanTier,
+    onUpdateSettings: ((StreamSettings) -> StreamSettings) -> Unit,
+    onOpenUpgrade: () -> Unit
+) {
+    val p = LocalDiStreamPalette.current
+    DsPanel {
+        DsText("Preset Kualitas Cepat & Kontrol Encoder Penuh", size = 14.sp, weight = FontWeight.Bold)
+        Spacer(Modifier.height(4.dp))
+        DsText(
+            "Pilih preset cepat 1-ketuk atau atur manual resolusi, FPS, bitrate, codec, dan warna video seperti OBS Studio.",
+            size = 11.5.sp,
+            color = p.textMuted
+        )
+        Spacer(Modifier.height(10.dp))
+
+        // Preset Kualitas Video
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            VideoQualityPreset.entries.forEach { preset ->
+                val locked = preset.requiresPro && !activeTier.allow1080p60AndHevc
+                DsButton(
+                    label = preset.label + if (locked) " [Buka Pro]" else "",
+                    active = settings.qualityPreset == preset,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        if (locked) onOpenUpgrade()
+                        else onUpdateSettings {
+                            it.copy(
+                                qualityPreset = preset,
+                                manualBitrateKbps = preset.maxBitrateBps / 1000,
+                                manualFps = preset.fps
+                            )
+                        }
+                    }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // Fader Bitrate Manual & Pilihan FPS Presisi
+        DsFader(
+            label = "Bitrate Video Manual",
+            value = settings.manualBitrateKbps.toFloat(),
+            valueRange = 1200f..10000f,
+            formattedValue = String.format("%.1f Mbps (%d kbps)", settings.manualBitrateKbps / 1000f, settings.manualBitrateKbps),
+            onValueChange = { kbps -> onUpdateSettings { it.copy(manualBitrateKbps = kbps.roundToInt()) } }
+        )
+
+        Spacer(Modifier.height(8.dp))
+        DsText("Frame Rate (FPS)", size = 12.sp, weight = FontWeight.SemiBold, color = p.textSecondary)
+        Spacer(Modifier.height(5.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+            listOf(24, 30, 45, 60).forEach { fps ->
+                DsButton(
+                    label = "$fps FPS",
+                    compact = true,
+                    active = settings.manualFps == fps,
+                    modifier = Modifier.weight(1f),
+                    onClick = { onUpdateSettings { it.copy(manualFps = fps) } }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+        DsText("Codec Hardware GPU", size = 12.sp, weight = FontWeight.SemiBold, color = p.textSecondary)
+        Spacer(Modifier.height(5.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+            VideoCodecOption.entries.forEach { codec ->
+                val locked = codec.requiresPro && !activeTier.allow1080p60AndHevc
+                DsButton(
+                    label = codec.label,
+                    compact = true,
+                    active = settings.videoCodec == codec,
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        if (locked) onOpenUpgrade() else onUpdateSettings { it.copy(videoCodec = codec) }
+                    }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+        DsText("Filter Warna Kamera & Layar (Color Grading)", size = 12.sp, weight = FontWeight.SemiBold, color = p.textSecondary)
+        Spacer(Modifier.height(5.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            ColorGradePreset.entries.forEach { grade ->
+                DsButton(
+                    label = grade.label,
+                    compact = true,
+                    active = settings.colorGrade == grade,
+                    onClick = { onUpdateSettings { it.copy(colorGrade = grade) } }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+        DsToggle(
+            title = "Adaptive Bitrate Otomatis (Anti-Freeze)",
+            subtitle = "Turunkan bitrate mulus saat sinyal drop tanpa memutus koneksi live",
+            checked = settings.adaptiveBitrate,
+            onCheckedChange = { v -> onUpdateSettings { it.copy(adaptiveBitrate = v) } }
+        )
+
+        Spacer(Modifier.height(10.dp))
+        DsInputField(
+            label = "Judul Siaran / Layar Pembuka & BRB",
+            value = settings.streamTitleHeadline,
+            placeholder = "Mabar Push Rank Mythic Malam Ini",
+            onValueChange = { v -> onUpdateSettings { it.copy(streamTitleHeadline = v) } }
+        )
     }
 }
 
 @Composable
-private fun PlanOptionCard(
-    tier: SaasPlanTier,
-    highlights: String,
-    isCurrent: Boolean,
-    onSubscribe: () -> Unit
+private fun OverlayAndCompositorDeck(
+    settings: StreamSettings,
+    runtimeState: StreamRuntimeState,
+    activeTier: SaasPlanTier,
+    onUpdateSettings: ((StreamSettings) -> StreamSettings) -> Unit,
+    onAddGoalProgress: (Int) -> Unit,
+    onReloadOverlayClick: () -> Unit,
+    onOpenUpgrade: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .border(
-                1.dp,
-                if (tier == SaasPlanTier.MONTHLY) BrandBlue else MaterialTheme.colorScheme.outline,
-                RoundedCornerShape(12.dp)
+    val p = LocalDiStreamPalette.current
+    DsPanel {
+        DsText("Preset Bingkai & Multi-Layer Compositor", size = 14.sp, weight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            OverlayFramePreset.entries.forEach { preset ->
+                val locked = preset.requiresPro && !activeTier.unlockAllScenes
+                DsButton(
+                    label = preset.label + if (locked) " [Pro]" else "",
+                    compact = true,
+                    active = settings.framePreset == preset,
+                    onClick = {
+                        if (locked) onOpenUpgrade() else onUpdateSettings { it.copy(framePreset = preset) }
+                    }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+        DsText("Mode Widget Interaksi Tap-Tap Love / Sultan", size = 12.sp, weight = FontWeight.SemiBold, color = p.textSecondary)
+        Spacer(Modifier.height(5.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            LoveTapPreset.entries.forEach { lp ->
+                DsButton(
+                    label = lp.label,
+                    compact = true,
+                    active = settings.loveTapPreset == lp,
+                    onClick = { onUpdateSettings { it.copy(loveTapPreset = lp) } }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            DsToggle(
+                title = "Master Layer Overlay Aktif",
+                subtitle = "Tampilkan seluruh widget di panggung preview & siaran RTMP",
+                checked = settings.overlayMasterEnabled,
+                onCheckedChange = { v -> onUpdateSettings { it.copy(overlayMasterEnabled = v) } }
             )
-            .padding(12.dp)
-    ) {
+            DsToggle(
+                title = "Progress Bar Target Gift / Donasi",
+                subtitle = "Progres saat ini: ${settings.goalCurrent} / ${settings.goalTarget}",
+                checked = settings.goalBarVisible,
+                onCheckedChange = { v -> onUpdateSettings { it.copy(goalBarVisible = v) } }
+            )
+            DsToggle(
+                title = "Subathon Countdown Timer",
+                subtitle = "Bertambah +60 detik otomatis saat gift/donasi masuk",
+                checked = settings.subathonTimerVisible,
+                badge = "Pro",
+                onCheckedChange = { v -> onUpdateSettings { it.copy(subathonTimerVisible = v) } }
+            )
+            DsToggle(
+                title = "Running Text Bar Bawah",
+                subtitle = settings.lowerThirdTickerText,
+                checked = settings.lowerThirdVisible,
+                onCheckedChange = { v -> onUpdateSettings { it.copy(lowerThirdVisible = v) } }
+            )
+            DsToggle(
+                title = "Sembunyikan Watermark DiStream",
+                subtitle = if (activeTier.removeWatermark) "Aktif — Feed bersih 100% tanpa watermark" else "Upgrade mulai Rp 5.000 untuk siaran bersih tanpa watermark",
+                checked = activeTier.removeWatermark && !settings.watermarkVisible,
+                badge = "Clean Feed",
+                onCheckedChange = { clean ->
+                    if (!activeTier.removeWatermark) onOpenUpgrade()
+                    else onUpdateSettings { it.copy(watermarkVisible = !clean) }
+                }
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            DsButton("+100 Target Gift", compact = true, onClick = { onAddGoalProgress(100) })
+            DsButton("Reset Target", compact = true, onClick = { onUpdateSettings { it.copy(goalCurrent = 0) } })
+            DsButton("Muat Ulang Browser Layer", compact = true, onClick = onReloadOverlayClick)
+        }
+
+        Spacer(Modifier.height(10.dp))
+        DsInputField(
+            label = "URL Browser Source / Saweria / TikFinity Overlay (Transparan)",
+            value = settings.primaryOverlayUrl,
+            placeholder = "https://saweria.co/overlays/alert?streamKey=...",
+            onValueChange = { url -> onUpdateSettings { it.copy(primaryOverlayUrl = url) } }
+        )
+    }
+}
+
+@Composable
+private fun AudioAndSoundFxDeck(
+    settings: StreamSettings,
+    runtimeState: StreamRuntimeState,
+    activeTier: SaasPlanTier,
+    onUpdateSettings: ((StreamSettings) -> StreamSettings) -> Unit,
+    onPlaySoundFx: (SoundFxPad) -> Unit,
+    onStopAllSoundFx: () -> Unit,
+    onToggleCensorBeep: (Boolean) -> Unit,
+    onOpenUpgrade: () -> Unit
+) {
+    val p = LocalDiStreamPalette.current
+    DsPanel {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(tier.title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text(tier.periodLabel, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp, color = BrandBlue)
-            }
-            Button(
-                onClick = onSubscribe,
-                enabled = !isCurrent,
-                shape = RoundedCornerShape(9.dp)
+            DsText("SoundFX Deck 48kHz Real Audio + DSP Mixer", size = 14.sp, weight = FontWeight.Bold)
+            DsButton("Stop Efek", compact = true, onClick = onStopAllSoundFx)
+        }
+        Spacer(Modifier.height(4.dp))
+        DsText(
+            "Ketuk pad di bawah untuk mendengar efek suara 48kHz langsung di speaker HP sekaligus di-mix ke penonton live.",
+            size = 11.5.sp,
+            color = p.textMuted
+        )
+
+        Spacer(Modifier.height(10.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            DsVuBar("MIC", runtimeState.micLevelNormalized, p.okEmerald)
+            DsVuBar("GAME", runtimeState.gameLevelNormalized, p.accentPrimary)
+            DsVuBar("SFX", runtimeState.sfxLevelNormalized, p.warnAmber)
+        }
+
+        Spacer(Modifier.height(12.dp))
+        // Grid 8 Pad SoundFX
+        SoundFxPad.entries.chunked(2).forEach { pair ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
             ) {
-                Text(if (isCurrent) "Paket Aktif" else "Pilih Paket", fontSize = 11.5.sp)
+                pair.forEach { pad ->
+                    val locked = pad.requiresPro && !activeTier.unlockAllSoundFx
+                    val isPlaying = runtimeState.activeSfxName == pad.label
+                    DsButton(
+                        label = pad.label + if (locked) " [Pro]" else "",
+                        active = isPlaying,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            if (locked) onOpenUpgrade() else onPlaySoundFx(pad)
+                        }
+                    )
+                }
             }
         }
-        Spacer(Modifier.height(6.dp))
-        Text(highlights, fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 16.sp)
+
+        // Tombol Sensor Suara 1kHz
+        DsButton(
+            label = if (runtimeState.isCensorBeepActive) "MATIKAN SENSOR SUARA 1KHZ" else "AKTIFKAN SENSOR SUARA LIVE 1KHZ",
+            variant = if (runtimeState.isCensorBeepActive) DsBtnVariant.LIVE_DANGER else DsBtnVariant.SURFACE,
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { onToggleCensorBeep(!runtimeState.isCensorBeepActive) }
+        )
+
+        Spacer(Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            AudioCaptureMode.entries.forEach { mode ->
+                DsButton(
+                    label = mode.label,
+                    compact = true,
+                    active = settings.audioMode == mode,
+                    onClick = { onUpdateSettings { it.copy(audioMode = mode) } }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+        DsFader(
+            label = "Boost Volume Mikrofon Vokal",
+            value = settings.micGain,
+            valueRange = 0.5f..3.5f,
+            formattedValue = String.format("%.1fx", settings.micGain),
+            onValueChange = { v -> onUpdateSettings { it.copy(micGain = v) } }
+        )
+        Spacer(Modifier.height(8.dp))
+        DsFader(
+            label = "Volume Suara Internal Game",
+            value = settings.gameGain,
+            valueRange = 0.1f..2.0f,
+            formattedValue = String.format("%.1fx", settings.gameGain),
+            onValueChange = { v -> onUpdateSettings { it.copy(gameGain = v) } }
+        )
+        Spacer(Modifier.height(8.dp))
+        DsFader(
+            label = "Volume SoundFX Deck",
+            value = settings.sfxVolume,
+            valueRange = 0.2f..1.4f,
+            formattedValue = "${(settings.sfxVolume * 100).roundToInt()}%",
+            onValueChange = { v -> onUpdateSettings { it.copy(sfxVolume = v) } }
+        )
+
+        Spacer(Modifier.height(10.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            DsToggle(
+                title = "Auto Voice Ducking (Kecilkan Game Saat Bicara)",
+                subtitle = "Otomatis menurunkan suara game 55% begitu streamer berbicara",
+                checked = settings.voiceDuckingEnabled,
+                onCheckedChange = { v -> onUpdateSettings { it.copy(voiceDuckingEnabled = v) } }
+            )
+            DsToggle(
+                title = "Broadcast Noise Gate (-42 dBFS)",
+                subtitle = "Redam desis kipas HP & suara latar ruangan saat diam",
+                checked = settings.noiseGateEnabled,
+                onCheckedChange = { v -> onUpdateSettings { it.copy(noiseGateEnabled = v) } }
+            )
+        }
     }
 }
 
 @Composable
-private fun OverlayAndTextTab(
+private fun FloatingAndLiveEventDeck(
     settings: StreamSettings,
-    activeTier: SaasPlanTier,
+    runtimeState: StreamRuntimeState,
     hasOverlayPermission: Boolean,
     onUpdateSettings: ((StreamSettings) -> StreamSettings) -> Unit,
-    onAddCustomText: (String) -> Unit,
-    onMoveCustomText: (String, Int, Int) -> Unit,
-    onToggleCustomText: (String) -> Unit,
-    onDeleteCustomText: (String) -> Unit,
+    onToggleFloatingTest: () -> Unit,
     onRequestOverlayPermission: () -> Unit,
-    onAddGoal: (Int) -> Unit,
-    onReloadCompositor: () -> Unit,
-    onTestGift: () -> Unit,
-    onOpenUpgrade: () -> Unit
+    onTestGiftClick: () -> Unit,
+    onTestDonationClick: () -> Unit,
+    onSaveReplayClip: () -> Unit,
+    onToggleRecordClick: () -> Unit,
+    onCaptureSnapshotClick: () -> Unit,
+    onAddMarkerClick: () -> Unit,
+    onToggleTorchClick: () -> Unit
 ) {
-    var draftText by remember { mutableStateOf("") }
+    val p = LocalDiStreamPalette.current
+    DsPanel {
+        DsText("Tes Mode Melayang (Floating HUD) & Alat Siaran", size = 14.sp, weight = FontWeight.Bold)
+        Spacer(Modifier.height(4.dp))
+        DsText(
+            "Nyalakan kapsul melayang sekarang juga untuk mengetes geser jendela, mengecilkan jadi gelembung tepi, ganti scene, Facecam PiP, dan SoundFX di atas Home Screen / Game tanpa harus mulai RTMP dulu.",
+            size = 11.5.sp,
+            color = p.textMuted
+        )
+        Spacer(Modifier.height(10.dp))
 
-    LazyColumn(
-        contentPadding = PaddingValues(vertical = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            CardPanel(title = "Preset Tap-Tap Love & Tema Bingkai") {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(LoveTapPreset.entries) { item ->
-                        SelectableChip(
-                            label = item.label,
-                            selected = settings.loveTapPreset == item,
-                            onClick = { onUpdateSettings { it.copy(loveTapPreset = item) } }
-                        )
-                    }
-                }
-                Spacer(Modifier.height(10.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(OverlayFramePreset.entries) { preset ->
-                        val locked = preset.requiresPro && !activeTier.removeWatermark
-                        SelectableChip(
-                            label = if (locked) "${preset.label} (Pro)" else preset.label,
-                            selected = settings.framePreset == preset,
-                            onClick = {
-                                if (locked) onOpenUpgrade()
-                                else onUpdateSettings { it.copy(framePreset = preset) }
-                            }
-                        )
-                    }
-                }
-                Spacer(Modifier.height(10.dp))
-                SettingToggleRow(
-                    title = "Sembunyikan Watermark DiStream",
-                    subtitle = if (activeTier.removeWatermark) "Aktif — tampilan bersih penuh" else "Tersedia mulai Paket Harian (Rp 5.000)",
-                    checked = activeTier.removeWatermark && !settings.watermarkVisible,
-                    onCheckedChange = { hide ->
-                        if (!activeTier.removeWatermark) onOpenUpgrade()
-                        else onUpdateSettings { it.copy(watermarkVisible = !hide) }
+        if (!hasOverlayPermission) {
+            DsButton(
+                label = "1. Berikan Izin Tampil di Atas Aplikasi Lain",
+                variant = DsBtnVariant.PRIMARY,
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onRequestOverlayPermission
+            )
+            Spacer(Modifier.height(8.dp))
+        }
+
+        DsButton(
+            label = if (runtimeState.isFloatingTestActive) "MATIKAN JENDELA MELAYANG" else "AKTIFKAN & TES MELAYANG SEKARANG",
+            variant = if (runtimeState.isFloatingTestActive) DsBtnVariant.LIVE_DANGER else DsBtnVariant.PRIMARY,
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                if (!hasOverlayPermission) onRequestOverlayPermission() else onToggleFloatingTest()
+            }
+        )
+
+        Spacer(Modifier.height(10.dp))
+        DsFader(
+            label = "Transparansi Kapsul Melayang",
+            value = settings.hudOpacityPercent.toFloat(),
+            valueRange = 50f..100f,
+            formattedValue = "${settings.hudOpacityPercent}%",
+            onValueChange = { v -> onUpdateSettings { it.copy(hudOpacityPercent = v.roundToInt()) } }
+        )
+
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+            listOf(0 to "Facecam S", 1 to "Facecam M", 2 to "Facecam L").forEach { (idx, label) ->
+                DsButton(
+                    label = label,
+                    compact = true,
+                    active = settings.facecamSizeIndex == idx,
+                    modifier = Modifier.weight(1f),
+                    onClick = { onUpdateSettings { it.copy(facecamSizeIndex = idx) } }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+        DsToggle(
+            title = "Tampilkan Facecam PiP Kamera Langsung",
+            subtitle = "Muncul di panggung kanvas & kapsul melayang saat bermain game",
+            checked = settings.floatingFacecamEnabled,
+            onCheckedChange = { v -> onUpdateSettings { it.copy(floatingFacecamEnabled = v) } }
+        )
+
+        Spacer(Modifier.height(12.dp))
+        DsText("Tes Alert Donasi, Suara Pintar TTS & Rekaman", size = 12.sp, weight = FontWeight.Bold, color = p.textSecondary)
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+            DsButton("Tes Gift Paus", compact = true, modifier = Modifier.weight(1f), onClick = onTestGiftClick)
+            DsButton("Tes Saweria + TTS", compact = true, modifier = Modifier.weight(1f), onClick = onTestDonationClick)
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+            DsButton("Simpan Replay 30s", compact = true, modifier = Modifier.weight(1f), onClick = onSaveReplayClip)
+            DsButton(
+                label = if (runtimeState.isRecordingLocal) "Stop Rekam MP4" else "Rekam MP4 Lokal",
+                compact = true,
+                active = runtimeState.isRecordingLocal,
+                modifier = Modifier.weight(1f),
+                onClick = onToggleRecordClick
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+            DsButton("Snapshot PNG", compact = true, modifier = Modifier.weight(1f), onClick = onCaptureSnapshotClick)
+            DsButton("Bookmark Momen", compact = true, modifier = Modifier.weight(1f), onClick = onAddMarkerClick)
+            DsButton("Flash Kamera", compact = true, active = runtimeState.isTorchActive, onClick = onToggleTorchClick)
+        }
+    }
+}
+
+@Composable
+private fun SecurityAndProCloudDeck(
+    settings: StreamSettings,
+    runtimeState: StreamRuntimeState,
+    activeTier: SaasPlanTier,
+    onUpdateSettings: ((StreamSettings) -> StreamSettings) -> Unit,
+    onOpenUpgrade: () -> Unit,
+    onRedeemToken: (String) -> Unit,
+    onTriggerPanic: () -> Unit
+) {
+    val p = LocalDiStreamPalette.current
+    var manualTokenInput by remember { mutableStateOf("") }
+
+    DsPanel {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DsText("Brankas RTMP Keystore & Cloud Pro", size = 14.sp, weight = FontWeight.Bold)
+            DsButton("Upgrade Paket", compact = true, variant = DsBtnVariant.VIP_GOLD, onClick = onOpenUpgrade)
+        }
+
+        Spacer(Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            RtmpDestinationPreset.entries.forEach { dest ->
+                DsButton(
+                    label = dest.platformName,
+                    compact = true,
+                    active = settings.destinationPreset == dest,
+                    onClick = {
+                        onUpdateSettings {
+                            it.copy(destinationPreset = dest, serverUrl = dest.defaultServerUrl)
+                        }
                     }
                 )
             }
         }
 
-        item {
-            CardPanel(title = "Teks Kustom Bebas (${settings.customTextLayers.size}/${activeTier.maxCustomTextLayers})") {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = draftText,
-                        onValueChange = { draftText = it },
-                        placeholder = { Text("Tulis ID Mabar / Pengumuman...") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Button(
-                        onClick = {
-                            onAddCustomText(draftText)
-                            draftText = ""
-                        },
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Icon(Icons.Rounded.Add, contentDescription = "Tambah")
+        Spacer(Modifier.height(10.dp))
+        DsInputField(
+            label = "Server RTMP / RTMPS Tujuan",
+            value = settings.serverUrl,
+            placeholder = "rtmps://push.rtmp.tiktok.com/live",
+            onValueChange = { v -> onUpdateSettings { it.copy(serverUrl = v) } }
+        )
+        Spacer(Modifier.height(8.dp))
+        DsInputField(
+            label = "Stream Key Rahasia (Terenkripsi Hardware AES-256-GCM)",
+            value = settings.streamKey,
+            placeholder = "Tempel Stream Key TikTok / YouTube Anda",
+            onValueChange = { v -> onUpdateSettings { it.copy(streamKey = v) } },
+            isSecret = true
+        )
+        if (settings.streamKey.isNotBlank()) {
+            Spacer(Modifier.height(4.dp))
+            DsText(
+                text = "Endpoint terproteksi: ${StreamKeyVault.sanitizeEndpointForDisplay(settings.buildFullEndpoint())}",
+                size = 10.5.sp,
+                mono = true,
+                color = p.okEmerald
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+        DsInputField(
+            label = "Username TikTok Live (@handle untuk Chat & Gift Real-Time)",
+            value = settings.tiktokUsername,
+            placeholder = "@username_kreator",
+            onValueChange = { v -> onUpdateSettings { it.copy(tiktokUsername = v) } }
+        )
+
+        Spacer(Modifier.height(10.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            DsToggle(
+                title = "Multi-Stream Cloud Simulcast (TikTok + YouTube + Twitch)",
+                subtitle = "1x upload hemat baterai & kuota ke 3 platform sekaligus",
+                checked = settings.simulcastEnabled && activeTier.allowMultiStreamSimulcast,
+                badge = "Mingguan+",
+                onCheckedChange = { v ->
+                    if (!activeTier.allowMultiStreamSimulcast) onOpenUpgrade()
+                    else onUpdateSettings { it.copy(simulcastEnabled = v) }
+                }
+            )
+            if (settings.simulcastEnabled && activeTier.allowMultiStreamSimulcast) {
+                DsInputField(
+                    label = "YouTube Stream Key Tambahan",
+                    value = settings.simulcastYoutubeKey,
+                    placeholder = "xxxx-xxxx-xxxx-xxxx",
+                    onValueChange = { v -> onUpdateSettings { it.copy(simulcastYoutubeKey = v) } },
+                    isSecret = true
+                )
+                DsInputField(
+                    label = "Twitch Stream Key Tambahan",
+                    value = settings.simulcastTwitchKey,
+                    placeholder = "live_xxxxxxxx",
+                    onValueChange = { v -> onUpdateSettings { it.copy(simulcastTwitchKey = v) } },
+                    isSecret = true
+                )
+            }
+            DsToggle(
+                title = "Smart Indonesian TTS Pembaca Donasi Otomatis",
+                subtitle = "Bacakan nama & pesan saweria/gift otomatis dengan suara Bahasa Indonesia",
+                checked = settings.smartTtsDonationEnabled && activeTier.allowSmartTtsDonation,
+                badge = "VIP Bulanan",
+                onCheckedChange = { v ->
+                    if (!activeTier.allowSmartTtsDonation) onOpenUpgrade()
+                    else onUpdateSettings { it.copy(smartTtsDonationEnabled = v) }
+                }
+            )
+            DsToggle(
+                title = "Cloud Anti-Disconnect Shield 60 Detik",
+                subtitle = "Jaga sesi room TikTok LIVE tidak putus saat sinyal 4G/Wi-Fi perpindahan",
+                checked = settings.cloudFailoverShieldEnabled && activeTier.allowCloudFailoverShield,
+                badge = "VIP Bulanan",
+                onCheckedChange = { v ->
+                    if (!activeTier.allowCloudFailoverShield) onOpenUpgrade()
+                    else onUpdateSettings { it.copy(cloudFailoverShieldEnabled = v) }
+                }
+            )
+            DsToggle(
+                title = "Layar Aplikasi Anti-Intip (FLAG_SECURE)",
+                subtitle = "Cegah Stream Key terekam saat membuka aplikasi di tengah live",
+                checked = settings.protectAppWindowFromCapture,
+                onCheckedChange = { v -> onUpdateSettings { it.copy(protectAppWindowFromCapture = v) } }
+            )
+            DsToggle(
+                title = "Kunci PIN Sebelum Stop Live",
+                subtitle = "Cegah siaran mati tak sengaja saat layar tersentuh",
+                checked = settings.confirmPinBeforeStop,
+                onCheckedChange = { v -> onUpdateSettings { it.copy(confirmPinBeforeStop = v) } }
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+        DsButton(
+            label = "DARURAT PANIC BLACKOUT (TUTUP LAYAR + MUTE MIC INSTAN)",
+            variant = DsBtnVariant.LIVE_DANGER,
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onTriggerPanic
+        )
+
+        Spacer(Modifier.height(12.dp))
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            DsInputField(
+                label = "Aktivasi Kode Token Lisensi (DST1...)",
+                value = manualTokenInput,
+                placeholder = "Tempel token DST1 dari email bukti bayar",
+                onValueChange = { manualTokenInput = it },
+                modifier = Modifier.weight(1f)
+            )
+            DsButton(
+                label = "Aktifkan",
+                variant = DsBtnVariant.PRIMARY,
+                onClick = {
+                    if (manualTokenInput.isNotBlank()) {
+                        onRedeemToken(manualTokenInput)
+                        manualTokenInput = ""
                     }
                 }
-                Spacer(Modifier.height(10.dp))
-                settings.customTextLayers.forEach { layer ->
+            )
+        }
+    }
+}
+
+@Composable
+private fun SaasCheckoutSheetModal(
+    activeTier: SaasPlanTier,
+    settings: StreamSettings,
+    pendingOrder: SaasCheckoutOrder?,
+    isCreatingOrder: Boolean,
+    onUpdateEmail: (String) -> Unit,
+    onStartCheckout: (SaasPlanTier, String) -> Unit,
+    onOpenBrowserCheckout: (String) -> Unit,
+    onConfirmPaid: () -> Unit,
+    onClose: () -> Unit
+) {
+    val p = LocalDiStreamPalette.current
+    var selectedPlan by remember { mutableStateOf(SaasPlanTier.MONTHLY) }
+    var promoInput by remember { mutableStateOf("") }
+
+    DsModalScrim(onDismiss = onClose) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                DsText("DiStream Studio Pro — Pakasir QRIS v2", size = 15.sp, weight = FontWeight.Bold)
+                DsButton("Tutup", compact = true, onClick = onClose)
+            }
+
+            if (pendingOrder == null) {
+                listOf(SaasPlanTier.DAILY, SaasPlanTier.WEEKLY, SaasPlanTier.MONTHLY).forEach { tier ->
+                    val isSel = selectedPlan == tier
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(10.dp)
+                            .clip(RoundedCornerShape(13.dp))
+                            .background(if (isSel) p.accentPrimary.copy(alpha = 0.14f) else p.surfaceMid)
+                            .border(
+                                width = if (isSel) 1.5.dp else 1.dp,
+                                color = if (isSel) p.accentPrimary else p.borderSubtle,
+                                shape = RoundedCornerShape(13.dp)
+                            )
+                            .padding(12.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(layer.content, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                            Row {
-                                IconButton(onClick = { onToggleCustomText(layer.id) }, modifier = Modifier.size(30.dp)) {
-                                    Icon(
-                                        imageVector = if (layer.visible) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff,
-                                        contentDescription = null,
-                                        tint = if (layer.visible) HealthyGreen else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                                IconButton(onClick = { onDeleteCustomText(layer.id) }, modifier = Modifier.size(30.dp)) {
-                                    Icon(Icons.Rounded.DeleteOutline, contentDescription = null, modifier = Modifier.size(18.dp))
-                                }
+                            Column {
+                                DsText(tier.title, size = 13.5.sp, weight = FontWeight.Bold)
+                                DsText(tier.badge, size = 10.5.sp, color = p.accentSecondary)
                             }
-                        }
-                        Slider(
-                            value = layer.yPercent.toFloat(),
-                            onValueChange = { y -> onMoveCustomText(layer.id, layer.xPercent, y.roundToInt()) },
-                            valueRange = 4f..86f
-                        )
-                    }
-                }
-            }
-        }
-
-        item {
-            CardPanel(title = "Layer Sumber OBS & Browser Source (Saweria / TikFinity)") {
-                LayerVisibilityRow(
-                    title = "Alert Donasi Saweria / SociaBuzz",
-                    subtitle = settings.primaryOverlayUrl.ifBlank { "Menggunakan kartu alert bawaan DiStream" },
-                    visible = settings.primaryOverlayVisible,
-                    onToggle = { onUpdateSettings { it.copy(primaryOverlayVisible = !it.primaryOverlayVisible) } }
-                )
-                LayerVisibilityRow(
-                    title = "Bar Target Gift (${settings.goalCurrent} / ${settings.goalTarget})",
-                    subtitle = settings.goalTitle,
-                    visible = settings.goalBarVisible,
-                    onToggle = { onUpdateSettings { it.copy(goalBarVisible = !it.goalBarVisible) } }
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = settings.primaryOverlayUrl,
-                    onValueChange = { v -> onUpdateSettings { it.copy(primaryOverlayUrl = v) } },
-                    label = { Text("Link Browser Source Saweria / SociaBuzz") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { onAddGoal(50) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) {
-                        Text("+50 Target")
-                    }
-                    OutlinedButton(onClick = onReloadCompositor, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) {
-                        Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Muat Ulang")
-                    }
-                    Button(onClick = onTestGift, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) {
-                        Text("Tes Alert")
-                    }
-                }
-            }
-        }
-
-        item {
-            CardPanel(title = "Panel Melayang di Atas Game & Facecam") {
-                if (!hasOverlayPermission) {
-                    Button(
-                        onClick = onRequestOverlayPermission,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Izinkan Panel Melayang di Atas Game")
-                    }
-                    Spacer(Modifier.height(8.dp))
-                }
-                SettingToggleRow(
-                    title = "Tampilkan Kontrol Melayang Saat Main",
-                    subtitle = "Dilengkapi drawer cepat SoundFX & Sensor 1kHz",
-                    checked = settings.floatingHudEnabled,
-                    onCheckedChange = { v -> onUpdateSettings { it.copy(floatingHudEnabled = v) } }
-                )
-                Spacer(Modifier.height(8.dp))
-                SettingToggleRow(
-                    title = "Aktifkan Facecam Kamera Depan",
-                    subtitle = "Tampil di pojok layar dan ikut terekam ke siaran",
-                    checked = settings.floatingFacecamEnabled,
-                    onCheckedChange = { v -> onUpdateSettings { it.copy(floatingFacecamEnabled = v) } }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun AudioAndSoundFxTab(
-    settings: StreamSettings,
-    activeTier: SaasPlanTier,
-    runtimeState: StreamRuntimeState,
-    onUpdateSettings: ((StreamSettings) -> StreamSettings) -> Unit,
-    onPlaySoundFx: (SoundFxPad) -> Unit,
-    onStopAllSoundFx: () -> Unit,
-    onToggleCensorBeep: (Boolean) -> Unit,
-    onToggleMute: () -> Unit,
-    onOpenUpgrade: () -> Unit
-) {
-    LazyColumn(
-        contentPadding = PaddingValues(vertical = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            CardPanel(title = "SoundFX Audio Deck (Langsung Masuk ke Stream)") {
-                SoundFxPad.entries.chunked(4).forEach { rowPads ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        rowPads.forEach { pad ->
-                            val locked = pad.requiresPro && !activeTier.unlockAllSoundFx
-                            val isPlaying = runtimeState.activeSfxName == pad.label
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(
-                                        if (isPlaying) BrandBlue else MaterialTheme.colorScheme.surfaceVariant
-                                    )
-                                    .clickable {
-                                        if (locked) onOpenUpgrade() else onPlaySoundFx(pad)
-                                    }
-                                    .padding(vertical = 10.dp, horizontal = 8.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Icon(
-                                    imageVector = if (locked) Icons.Rounded.Lock else Icons.Rounded.MusicNote,
-                                    contentDescription = pad.label,
-                                    tint = if (isPlaying) Color.White else if (locked) CautionAmber else BrandBlue,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(Modifier.height(5.dp))
-                                Text(
-                                    text = pad.label,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    color = if (isPlaying) Color.White else MaterialTheme.colorScheme.onSurface
-                                )
-                            }
+                            DsButton(
+                                label = formatRupiah(tier.priceIdr),
+                                compact = true,
+                                variant = if (isSel) DsBtnVariant.PRIMARY else DsBtnVariant.SURFACE,
+                                onClick = { selectedPlan = tier }
+                            )
                         }
                     }
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = onStopAllSoundFx,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Rounded.VolumeOff, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Hentikan Efek")
-                    }
-                    Button(
-                        onClick = { onToggleCensorBeep(!runtimeState.isCensorBeepActive) },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (runtimeState.isCensorBeepActive) LiveRed else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (runtimeState.isCensorBeepActive) Color.White else MaterialTheme.colorScheme.onSurface
-                        ),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(if (runtimeState.isCensorBeepActive) "Sensor 1kHz Aktif" else "Sensor Kata Kasar")
-                    }
-                }
+                DsInputField(
+                    label = "Email Penerima Token Lisensi (Resend Email Otomatis)",
+                    value = settings.subscriberEmail,
+                    placeholder = "nama@email.com (opsional)",
+                    onValueChange = onUpdateEmail,
+                    keyboardType = KeyboardType.Email
+                )
+                DsInputField(
+                    label = "Kode Promo / Voucher",
+                    value = promoInput,
+                    placeholder = "Kode promo jika ada (XYKAL50 / HEMAT20)",
+                    onValueChange = { promoInput = it }
+                )
 
-                Spacer(Modifier.height(10.dp))
-                Text("Volume SoundFX Deck: ${(settings.sfxVolume * 100).roundToInt()}%", fontSize = 12.sp)
-                Slider(
-                    value = settings.sfxVolume,
-                    onValueChange = { v -> onUpdateSettings { it.copy(sfxVolume = v) } },
-                    valueRange = 0f..1.5f
+                val (effTier, discPct, finalRp) = SaasSubscriptionManager.calculatePromoPricing(
+                    selectedPlan,
+                    promoInput
                 )
-            }
-        }
-
-        item {
-            CardPanel(title = "Audio Mixer Multi-Jalur & DSP") {
-                AudioMeterStrip(
-                    title = "Mikrofon Streamer",
-                    percent = (settings.micGain * 100).roundToInt(),
-                    level = runtimeState.micLevelNormalized,
-                    muted = runtimeState.isMicMuted,
-                    value = settings.micGain,
-                    range = 0f..3.0f,
-                    onValueChange = { g -> onUpdateSettings { it.copy(micGain = g) } },
-                    onMuteClick = onToggleMute
-                )
-                Spacer(Modifier.height(12.dp))
-                AudioMeterStrip(
-                    title = "Suara Internal Game",
-                    percent = (settings.gameGain * 100).roundToInt(),
-                    level = runtimeState.gameLevelNormalized,
-                    muted = settings.gameGain <= 0.01f,
-                    value = settings.gameGain,
-                    range = 0f..2.0f,
-                    onValueChange = { g -> onUpdateSettings { it.copy(gameGain = g) } },
-                    onMuteClick = {
-                        val next = if (settings.gameGain <= 0.01f) 1.0f else 0f
-                        onUpdateSettings { it.copy(gameGain = next) }
-                    }
-                )
-                Spacer(Modifier.height(10.dp))
-                SettingToggleRow(
-                    title = "Peredam Bising Kipas HP (Noise Gate)",
-                    subtitle = "Memotong desis Funcooler otomatis saat diam",
-                    checked = settings.noiseGateEnabled,
-                    onCheckedChange = { v -> onUpdateSettings { it.copy(noiseGateEnabled = v) } }
-                )
-                Spacer(Modifier.height(8.dp))
-                SettingToggleRow(
-                    title = "Prioritas Vokal (Auto Voice Ducking)",
-                    subtitle = "Mengecilkan suara ledakan game otomatis saat bicara",
-                    checked = settings.voiceDuckingEnabled,
-                    onCheckedChange = { v -> onUpdateSettings { it.copy(voiceDuckingEnabled = v) } }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun BroadcastAndSecurityTab(
-    settings: StreamSettings,
-    runtimeState: StreamRuntimeState,
-    onUpdateSettings: ((StreamSettings) -> StreamSettings) -> Unit,
-    onTriggerPanic: () -> Unit,
-    onSnapshot: () -> Unit,
-    onAddMarker: () -> Unit,
-    onFlipCamera: () -> Unit,
-    onToggleTorch: () -> Unit
-) {
-    var revealKey by remember { mutableStateOf(false) }
-
-    LazyColumn(
-        contentPadding = PaddingValues(vertical = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            CardPanel(title = "Aksi Keamanan Cepat & Kontrol Perangkat") {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    QuickActionCard(Icons.Rounded.Lock, "Darurat Panik", "Kunci Layar+Mic", LiveRed, onTriggerPanic, Modifier.weight(1f))
-                    QuickActionCard(Icons.Rounded.CameraAlt, "Tangkap PNG", runtimeState.lastSnapshotName.ifBlank { "Instan" }, null, onSnapshot, Modifier.weight(1f))
-                    QuickActionCard(Icons.Rounded.BookmarkBorder, "Tandai Momen", "${runtimeState.markerCount} tanda", null, onAddMarker, Modifier.weight(1f))
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    QuickActionCard(Icons.Rounded.Cameraswitch, "Balik Kamera", "Depan/Belakang", null, onFlipCamera, Modifier.weight(1f))
-                    QuickActionCard(Icons.Rounded.FlashlightOn, "Lampu Flash", if (runtimeState.isTorchActive) "Nyala" else "Mati", null, onToggleTorch, Modifier.weight(1f))
-                }
-            }
-        }
-
-        item {
-            CardPanel(title = "Tujuan Server RTMP / RTMPS Terenkripsi") {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(RtmpDestinationPreset.entries) { preset ->
-                        SelectableChip(
-                            label = preset.platformName,
-                            selected = settings.destinationPreset == preset,
-                            onClick = {
-                                onUpdateSettings {
-                                    it.copy(destinationPreset = preset, serverUrl = preset.defaultServerUrl)
-                                }
-                            }
-                        )
-                    }
-                }
-                Spacer(Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = settings.serverUrl,
-                    onValueChange = { u -> onUpdateSettings { it.copy(serverUrl = u) } },
-                    label = { Text("Server URL") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = settings.streamKey,
-                    onValueChange = { k -> onUpdateSettings { it.copy(streamKey = k) } },
-                    label = { Text("Stream Key (Terenkripsi AES-256 Keystore)") },
-                    singleLine = true,
-                    visualTransformation = if (revealKey) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        IconButton(onClick = { revealKey = !revealKey }) {
-                            Icon(if (revealKey) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility, contentDescription = null)
-                        }
+                DsButton(
+                    label = if (isCreatingOrder) {
+                        "MEMBUAT INVOICE QRIS DI PAKASIR..."
+                    } else {
+                        "BAYAR ${formatRupiah(finalRp)} VIA QRIS (${effTier.title})" +
+                            if (discPct > 0) " [-$discPct%]" else ""
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    variant = DsBtnVariant.VIP_GOLD,
+                    enabled = !isCreatingOrder,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { onStartCheckout(selectedPlan, promoInput) }
                 )
-            }
-        }
-
-        item {
-            CardPanel(title = "Pusat Keamanan & Perlindungan Akun") {
-                SettingToggleRow(
-                    title = "Sembunyikan Layar Aplikasi dari Rekaman (FLAG_SECURE)",
-                    subtitle = "Stream Key & PIN tidak akan pernah terlihat di video live",
-                    checked = settings.protectAppWindowFromCapture,
-                    onCheckedChange = { v -> onUpdateSettings { it.copy(protectAppWindowFromCapture = v) } }
-                )
-                Spacer(Modifier.height(8.dp))
-                SettingToggleRow(
-                    title = "Kunci PIN Sebelum Menghentikan Live",
-                    subtitle = "Mencegah siaran mati tidak sengaja akibat salah tekan",
-                    checked = settings.confirmPinBeforeStop,
-                    onCheckedChange = { v -> onUpdateSettings { it.copy(confirmPinBeforeStop = v) } }
-                )
-                Spacer(Modifier.height(8.dp))
-                SettingToggleRow(
-                    title = "Hapus Otomatis Stream Key Selesai Siaran",
-                    subtitle = "Keamanan ekstra apabila HP digunakan bersama orang lain",
-                    checked = settings.autoWipeStreamKeyAfterLive,
-                    onCheckedChange = { v -> onUpdateSettings { it.copy(autoWipeStreamKeyAfterLive = v) } }
-                )
-                Spacer(Modifier.height(8.dp))
-                SettingToggleRow(
-                    title = "Filter Kata Kasar & Promosi Terlarang Otomatis",
-                    subtitle = "Menyensor pesan chat/donasi berisiko pelanggaran akun TikTok",
-                    checked = settings.profanityChatFilter,
-                    onCheckedChange = { v -> onUpdateSettings { it.copy(profanityChatFilter = v) } }
-                )
-            }
-        }
-
-        item {
-            CardPanel(title = "Kualitas Encoder Video & Orientasi") {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StreamOrientation.entries.forEach { o ->
-                        SelectableChip(
-                            label = o.label,
-                            selected = settings.orientation == o,
-                            onClick = { onUpdateSettings { it.copy(orientation = o) } },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+            } else {
+                // TAMPILAN INVOICE REAL QRIS DARI PAKASIR API v2 + ZXING QR BITMAP ASLI!
+                val qrBitmap = remember(pendingOrder.qrisPayload) {
+                    SaasSubscriptionManager.generateQrBitmap(pendingOrder.qrisPayload, 520)
                 }
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    VideoCodecOption.entries.forEach { c ->
-                        SelectableChip(
-                            label = c.label,
-                            selected = settings.videoCodec == c,
-                            onClick = { onUpdateSettings { it.copy(videoCodec = c) } },
-                            modifier = Modifier.weight(1f)
-                        )
+
+                DsPanel(elevated = true) {
+                    DsText(
+                        text = if (pendingOrder.gatewayLive) {
+                            "Terhubung Live ke app.pakasir.com (Txn #${pendingOrder.txnId})"
+                        } else {
+                            "Invoice #${pendingOrder.orderId}"
+                        },
+                        size = 11.5.sp,
+                        weight = FontWeight.Bold,
+                        color = p.okEmerald
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    DsText(
+                        text = "Total Bayar QRIS: ${formatRupiah(pendingOrder.totalPaymentIdr)} (Termasuk biaya layanan ${formatRupiah(pendingOrder.feeIdr)})",
+                        size = 12.sp,
+                        color = p.textSecondary
+                    )
+                    Spacer(Modifier.height(10.dp))
+
+                    if (qrBitmap != null) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .align(Alignment.CenterHorizontally)
+                                .size(206.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(Color.White)
+                                .padding(8.dp)
+                        ) {
+                            Image(
+                                bitmap = qrBitmap.asImageBitmap(),
+                                contentDescription = "Kode QRIS Pakasir",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
                     }
-                }
-                Spacer(Modifier.height(8.dp))
-                VideoQualityPreset.entries.forEach { preset ->
-                    LayerVisibilityRow(
-                        title = preset.label,
-                        subtitle = "Bitrate maks ${preset.maxBitrateBps / 1000} kbps • Adaptive Bitrate",
-                        visible = settings.qualityPreset == preset,
-                        onToggle = { onUpdateSettings { it.copy(qualityPreset = preset) } }
+
+                    Spacer(Modifier.height(8.dp))
+                    DsText(
+                        text = "Status dipantau otomatis setiap 4.5 detik. Begitu pembayaran diterima oleh Pakasir, lisensi ${pendingOrder.planTier.title} aktif otomatis.",
+                        size = 11.sp,
+                        color = p.textMuted
                     )
                 }
-            }
-        }
-    }
-}
 
-@Composable
-private fun LiveInteractionTab(
-    settings: StreamSettings,
-    runtimeState: StreamRuntimeState,
-    onUpdateSettings: ((StreamSettings) -> StreamSettings) -> Unit,
-    onTestGift: () -> Unit,
-    onTestDonation: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(vertical = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        CardPanel(title = "Koneksi Pembaca Chat & Webhook Donasi") {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = settings.tiktokUsername,
-                    onValueChange = { u -> onUpdateSettings { it.copy(tiktokUsername = u) } },
-                    label = { Text("Username TikTok") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-                OutlinedTextField(
-                    value = settings.chatWebSocketUrl,
-                    onValueChange = { w -> onUpdateSettings { it.copy(chatWebSocketUrl = w) } },
-                    label = { Text("Server Event Bus") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onTestGift, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) {
-                    Text("Simulasi Gift + Love")
+                if (pendingOrder.hostedPaymentUrl.isNotBlank()) {
+                    DsButton(
+                        label = "Buka Halaman Pembayaran Resmi Pakasir",
+                        variant = DsBtnVariant.PRIMARY,
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { onOpenBrowserCheckout(pendingOrder.hostedPaymentUrl) }
+                    )
                 }
-                OutlinedButton(onClick = onTestDonation, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) {
-                    Text("Simulasi Saweria")
-                }
-            }
-        }
 
-        CardPanel(title = "Riwayat Interaksi Real-Time", modifier = Modifier.weight(1f)) {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(runtimeState.liveEvents.reversed(), key = { it.id }) { ev ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "[${ev.type.label}] ${ev.senderName}: ${ev.message}",
-                            fontSize = 12.sp,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            text = ev.timestampLabel,
-                            fontSize = 10.5.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DiStreamBottomBar(
-    selectedTab: Int,
-    onSelectTab: (Int) -> Unit,
-    isLive: Boolean,
-    isMuted: Boolean,
-    isRecording: Boolean,
-    onStartLive: () -> Unit,
-    onRequestStopLive: () -> Unit,
-    onToggleMute: () -> Unit,
-    onToggleRecord: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .navigationBarsPadding()
-    ) {
-        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
-                onClick = onToggleMute,
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                Icon(
-                    imageVector = if (isMuted) Icons.Rounded.MicOff else Icons.Rounded.Mic,
-                    contentDescription = "Mic",
-                    tint = if (isMuted) LiveRed else MaterialTheme.colorScheme.onSurface
-                )
-            }
-            IconButton(
-                onClick = onToggleRecord,
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.FiberManualRecord,
-                    contentDescription = "Rekam",
-                    tint = if (isRecording) LiveRed else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Button(
-                onClick = if (isLive) onRequestStopLive else onStartLive,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isLive) LiveRed else BrandBlue
-                ),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(46.dp)
-            ) {
-                Icon(
-                    imageVector = if (isLive) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
-                    contentDescription = null,
-                    tint = Color.White
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = if (isLive) "Akhiri Siaran Live" else "Mulai Siaran Live",
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+                DsButton(
+                    label = if (pendingOrder.isSandbox) {
+                        "Konfirmasi Bayar via API Resmi Pakasir (Mode Proyek Sandbox)"
+                    } else {
+                        "Saya Sudah Scan & Bayar — Cek Status Sekarang"
+                    },
+                    variant = DsBtnVariant.VIP_GOLD,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onConfirmPaid
                 )
             }
         }
-
-        NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-            NavigationBarItem(
-                selected = selectedTab == 0,
-                onClick = { onSelectTab(0) },
-                icon = { Icon(Icons.Rounded.Layers, contentDescription = null) },
-                label = { Text("Overlay", fontSize = 11.sp) }
-            )
-            NavigationBarItem(
-                selected = selectedTab == 1,
-                onClick = { onSelectTab(1) },
-                icon = { Icon(Icons.Rounded.GraphicEq, contentDescription = null) },
-                label = { Text("SoundFX", fontSize = 11.sp) }
-            )
-            NavigationBarItem(
-                selected = selectedTab == 2,
-                onClick = { onSelectTab(2) },
-                icon = { Icon(Icons.Rounded.WorkspacePremium, contentDescription = null) },
-                label = { Text("Pro VIP", fontSize = 11.sp) }
-            )
-            NavigationBarItem(
-                selected = selectedTab == 3,
-                onClick = { onSelectTab(3) },
-                icon = { Icon(Icons.Rounded.Security, contentDescription = null) },
-                label = { Text("Keamanan", fontSize = 11.sp) }
-            )
-            NavigationBarItem(
-                selected = selectedTab == 4,
-                onClick = { onSelectTab(4) },
-                icon = { Icon(Icons.Rounded.Forum, contentDescription = null) },
-                label = { Text("Chat", fontSize = 11.sp) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun CardPanel(
-    title: String,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
-            .padding(14.dp)
-    ) {
-        Text(title, fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
-        Spacer(Modifier.height(10.dp))
-        content()
-    }
-}
-
-@Composable
-private fun SelectableChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(if (selected) BrandBlue else MaterialTheme.colorScheme.surfaceVariant)
-            .clickable { onClick() }
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = if (selected) Color.White else MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
-
-@Composable
-private fun LayerVisibilityRow(
-    title: String,
-    subtitle: String,
-    visible: Boolean,
-    onToggle: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .clickable { onToggle() }
-            .padding(horizontal = 12.dp, vertical = 9.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(Modifier.weight(1f).padding(end = 8.dp)) {
-            Text(title, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold)
-            Text(subtitle, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        Icon(
-            imageVector = if (visible) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff,
-            contentDescription = null,
-            tint = if (visible) HealthyGreen else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(19.dp)
-        )
-    }
-}
-
-@Composable
-private fun AudioMeterStrip(
-    title: String,
-    percent: Int,
-    level: Float,
-    muted: Boolean,
-    value: Float,
-    range: ClosedFloatingPointRange<Float>,
-    onValueChange: (Float) -> Unit,
-    onMuteClick: () -> Unit
-) {
-    Column(Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(title, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(if (muted) "Bisu" else "$percent%", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                OutlinedButton(
-                    onClick = onMuteClick,
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    border = BorderStroke(1.dp, if (muted) LiveRed else MaterialTheme.colorScheme.outline)
-                ) {
-                    Text(if (muted) "Nyalakan" else "Bisu", fontSize = 11.sp)
-                }
-            }
-        }
-        Spacer(Modifier.height(6.dp))
-        val activeBars = if (muted) 0 else (level * 20).roundToInt()
-        Row(horizontalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.fillMaxWidth()) {
-            for (i in 0 until 20) {
-                val color = when {
-                    i >= activeBars -> MaterialTheme.colorScheme.surfaceVariant
-                    i >= 17 -> LiveRed
-                    i >= 13 -> CautionAmber
-                    else -> HealthyGreen
-                }
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .height(7.dp)
-                        .clip(CircleShape)
-                        .background(color)
-                )
-            }
-        }
-        Slider(value = value, onValueChange = onValueChange, valueRange = range)
-    }
-}
-
-@Composable
-private fun QuickActionCard(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    activeColor: Color?,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .height(80.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(
-                if (activeColor != null) activeColor.copy(alpha = 0.14f)
-                else MaterialTheme.colorScheme.surfaceVariant
-            )
-            .border(
-                1.dp,
-                activeColor ?: MaterialTheme.colorScheme.outline,
-                RoundedCornerShape(12.dp)
-            )
-            .clickable { onClick() }
-            .padding(10.dp),
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
-        Icon(icon, contentDescription = title, tint = activeColor ?: BrandBlue, modifier = Modifier.size(19.dp))
-        Column {
-            Text(title, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-            Text(subtitle, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-        }
-    }
-}
-
-@Composable
-private fun SettingToggleRow(
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column(Modifier.weight(1f).padding(end = 12.dp)) {
-            Text(title, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold)
-            Text(subtitle, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }

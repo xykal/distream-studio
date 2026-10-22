@@ -144,8 +144,17 @@ class DiStreamService : LifecycleService(), ConnectChecker {
             onToggleMute = { toggleMuteMic() },
             onTogglePrivacyShield = { togglePrivacyShield() },
             onToggleFacecam = { toggleFloatingFacecam() },
+            onSelectScene = { sc -> switchSceneLive(sc) },
             onTriggerQuickSfx = { pad -> playSoundFxPad(pad) },
-            onStopStream = { stopBroadcast() }
+            onCloseOrStop = {
+                if (_runtimeState.value.status == StreamStatus.LIVE ||
+                    _runtimeState.value.status == StreamStatus.CONNECTING
+                ) {
+                    stopBroadcast()
+                } else {
+                    closeFloatingTestHud()
+                }
+            }
         )
     }
 
@@ -257,6 +266,39 @@ class DiStreamService : LifecycleService(), ConnectChecker {
         }
     }
 
+    fun toggleFloatingTestHud(settings: StreamSettings): Boolean {
+        currentSettings = settings
+        if (!floatingHud.canDrawOverlays()) return false
+        return if (floatingHud.isShowing && _runtimeState.value.status == StreamStatus.IDLE) {
+            closeFloatingTestHud()
+            false
+        } else {
+            floatingHud.show(
+                showFacecamInitially = settings.floatingFacecamEnabled,
+                facecamSizeIndex = settings.facecamSizeIndex,
+                opacityPercent = settings.hudOpacityPercent
+            )
+            floatingHud.renderState(_runtimeState.value)
+            _runtimeState.update {
+                it.copy(
+                    isFloatingTestActive = true,
+                    statusMessage = "Mode Melayang Aktif — Silakan buka game / Home"
+                )
+            }
+            true
+        }
+    }
+
+    fun closeFloatingTestHud() {
+        floatingHud.dismiss()
+        _runtimeState.update {
+            it.copy(
+                isFloatingTestActive = false,
+                statusMessage = if (it.status == StreamStatus.LIVE) it.statusMessage else "Siap Siaran"
+            )
+        }
+    }
+
     fun startBroadcast(resultCode: Int, data: Intent, settings: StreamSettings) {
         currentSettings = settings
         dspEffect.noiseGateEnabled = settings.noiseGateEnabled
@@ -329,11 +371,15 @@ class DiStreamService : LifecycleService(), ConnectChecker {
             }
             genericStream.changeAudioSource(audioSource)
 
+            val targetBitrateBps = (settings.manualBitrateKbps.coerceIn(1000, 12000) * 1000)
+                .coerceAtMost(if (activeTier.allow1080p60AndHevc) 12_000_000 else 5_000_000)
+            val targetFps = settings.manualFps.coerceIn(24, 60)
+
             val videoReady = genericStream.prepareVideo(
                 width = effectivePreset.longSide,
                 height = effectivePreset.shortSide,
-                bitrate = effectivePreset.maxBitrateBps,
-                fps = effectivePreset.fps,
+                bitrate = targetBitrateBps,
+                fps = targetFps,
                 iFrameInterval = 2,
                 rotation = rotation
             )
@@ -368,8 +414,10 @@ class DiStreamService : LifecycleService(), ConnectChecker {
         if (settings.floatingHudEnabled) {
             floatingHud.show(
                 showFacecamInitially = settings.floatingFacecamEnabled,
-                facecamSizeIndex = settings.facecamSizeIndex
+                facecamSizeIndex = settings.facecamSizeIndex,
+                opacityPercent = settings.hudOpacityPercent
             )
+            _runtimeState.update { it.copy(isFloatingTestActive = true) }
         }
         chatBridge.connect(settings.chatWebSocketUrl, settings.tiktokUsername)
 
@@ -433,6 +481,14 @@ class DiStreamService : LifecycleService(), ConnectChecker {
 
     fun setLiveCensorBeep(active: Boolean) {
         dspEffect.liveCensorToneActive = active
+        if (active) {
+            lifecycleScope.launch(Dispatchers.Default) {
+                val beep = SoundFxSynthesizer.buildStereoPcm16(SoundFxPad.CENSOR_BEEP, 0.9f)
+                SoundFxSynthesizer.playLocalMonitor(beep)
+            }
+        } else {
+            SoundFxSynthesizer.stopLocalMonitor()
+        }
         _runtimeState.update { it.copy(isCensorBeepActive = active) }
     }
 
@@ -631,6 +687,7 @@ class DiStreamService : LifecycleService(), ConnectChecker {
                         put("x", t.xPercent)
                         put("y", t.yPercent)
                         put("size", t.fontSizeSp)
+                        put("hex", t.accentHex)
                         put("pill", t.backgroundPill)
                     })
                 }
@@ -656,10 +713,20 @@ class DiStreamService : LifecycleService(), ConnectChecker {
             put("goalTitle", s.goalTitle)
             put("goalCurrent", s.goalCurrent)
             put("goalTarget", s.goalTarget.coerceAtLeast(1))
+            put("goalX", s.goalXPercent)
+            put("goalY", s.goalYPercent)
+            put("goalScale", s.goalScale)
+            put("loveX", s.loveXPercent)
+            put("loveY", s.loveYPercent)
+            put("loveScale", s.loveScale)
             put("subathonVisible", s.subathonTimerVisible && activeTier.unlockAllScenes)
             put("subathonSeconds", st.subathonSecondsLeft)
+            put("subathonX", s.subathonXPercent)
+            put("subathonY", s.subathonYPercent)
+            put("subathonScale", s.subathonScale)
             put("tickerVisible", s.lowerThirdVisible)
             put("tickerText", s.lowerThirdTickerText)
+            put("tickerY", s.tickerYPercent)
             put("watermarkVisible", mustShowWatermark)
             put("handle", watermarkText)
             put("primaryVisible", s.primaryOverlayVisible)
@@ -676,6 +743,17 @@ class DiStreamService : LifecycleService(), ConnectChecker {
     }
 
     private fun triggerOverlayAlertJs(category: String, sender: String, detail: String) {
+        _runtimeState.update {
+            it.copy(activeAlertBannerTitle = "$category • $sender", activeAlertBannerDetail = detail)
+        }
+        lifecycleScope.launch {
+            delay(4200L)
+            _runtimeState.update { cur ->
+                if (cur.activeAlertBannerTitle == "$category • $sender") {
+                    cur.copy(activeAlertBannerTitle = "", activeAlertBannerDetail = "")
+                } else cur
+            }
+        }
         val c = JSONObject.quote(category)
         val s = JSONObject.quote(sender)
         val d = JSONObject.quote(detail)
@@ -1057,13 +1135,22 @@ class DiStreamService : LifecycleService(), ConnectChecker {
                   document.documentElement.style.setProperty('--card-bg', cfg.lightCard ? 'rgba(255,255,255,0.92)' : 'rgba(20,22,27,0.86)');
                   document.documentElement.style.setProperty('--card-txt', cfg.lightCard ? '#111827' : '#F9FAFB');
 
-                  document.getElementById('goalWidget').style.display = cfg.goalVisible ? 'block' : 'none';
+                  const goalEl = document.getElementById('goalWidget');
+                  goalEl.style.display = cfg.goalVisible ? 'block' : 'none';
+                  goalEl.style.left = (cfg.goalX ?? 5) + '%';
+                  goalEl.style.top = (cfg.goalY ?? 5) + '%';
+                  goalEl.style.transformOrigin = 'top left';
+                  goalEl.style.transform = 'scale(' + (cfg.goalScale ?? 1) + ')';
                   document.getElementById('goalTitle').textContent = cfg.goalTitle;
                   document.getElementById('goalNums').textContent = cfg.goalCurrent + ' / ' + cfg.goalTarget;
                   document.getElementById('goalFill').style.width = Math.min(100, Math.round((cfg.goalCurrent / cfg.goalTarget) * 100)) + '%';
 
                   const subEl = document.getElementById('subathonWidget');
                   subEl.style.display = cfg.subathonVisible ? 'block' : 'none';
+                  subEl.style.left = (cfg.subathonX ?? 5) + '%';
+                  subEl.style.top = (cfg.subathonY ?? 18) + '%';
+                  subEl.style.transformOrigin = 'top left';
+                  subEl.style.transform = 'scale(' + (cfg.subathonScale ?? 1) + ')';
                   const sh = String(Math.floor(cfg.subathonSeconds / 3600)).padStart(2, '0');
                   const sm = String(Math.floor((cfg.subathonSeconds % 3600) / 60)).padStart(2, '0');
                   const ss = String(cfg.subathonSeconds % 60).padStart(2, '0');
@@ -1074,6 +1161,11 @@ class DiStreamService : LifecycleService(), ConnectChecker {
                     loveEl.style.display = 'none';
                   } else {
                     loveEl.style.display = 'flex';
+                    loveEl.style.right = 'auto';
+                    loveEl.style.left = (cfg.loveX ?? 54) + '%';
+                    loveEl.style.top = (cfg.loveY ?? 16) + '%';
+                    loveEl.style.transformOrigin = 'top left';
+                    loveEl.style.transform = 'scale(' + (cfg.loveScale ?? 1) + ')';
                     if (cfg.lovePreset === 'TAP_LOVE_PILL') {
                       document.getElementById('loveMain').textContent = 'Tap-Tap Love';
                       document.getElementById('loveSub').textContent = cfg.likesCurrent + ' suka';
@@ -1088,7 +1180,10 @@ class DiStreamService : LifecycleService(), ConnectChecker {
 
                   document.getElementById('watermarkWidget').style.display = cfg.watermarkVisible ? 'flex' : 'none';
                   document.getElementById('wmHandle').textContent = cfg.handle;
-                  document.getElementById('tickerBar').style.display = cfg.tickerVisible ? 'flex' : 'none';
+                  const tickEl = document.getElementById('tickerBar');
+                  tickEl.style.display = cfg.tickerVisible ? 'flex' : 'none';
+                  tickEl.style.bottom = 'auto';
+                  tickEl.style.top = (cfg.tickerY ?? 91) + '%';
                   document.getElementById('tickerContent').textContent = cfg.tickerText;
 
                   const holder = document.getElementById('customTextsLayer');
@@ -1099,6 +1194,7 @@ class DiStreamService : LifecycleService(), ConnectChecker {
                     div.style.left = item.x + '%';
                     div.style.top = item.y + '%';
                     div.style.fontSize = item.size + 'px';
+                    div.style.color = item.hex || '#FFFFFF';
                     div.textContent = item.content;
                     holder.appendChild(div);
                   });

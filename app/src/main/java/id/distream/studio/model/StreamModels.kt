@@ -1,8 +1,9 @@
 package id.distream.studio.model
 
 enum class StudioThemeMode(val label: String) {
-    DARK("Studio Dark"),
-    LIGHT("Clean Light")
+    DARK("Obsidian Dark"),
+    LIGHT("Daylight Clean"),
+    ROYAL_GOLD("Royal Gold VIP")
 }
 
 enum class SaasPlanTier(
@@ -87,9 +88,16 @@ enum class SaasPlanTier(
     )
 }
 
-enum class StreamOrientation(val label: String, val ratioTag: String, val isPortrait: Boolean) {
-    PORTRAIT_9_16("Potret (9:16)", "9:16", true),
-    LANDSCAPE_16_9("Lanskap (16:9)", "16:9", false)
+enum class StreamOrientation(
+    val label: String,
+    val ratioTag: String,
+    val isPortrait: Boolean,
+    val aspectRatio: Float
+) {
+    PORTRAIT_9_16("TikTok Potret (9:16)", "9:16", true, 9f / 16f),
+    LANDSCAPE_16_9("Lanskap Game/YT (16:9)", "16:9", false, 16f / 9f),
+    CREATOR_4_5("Feed Kreator (4:5)", "4:5", true, 4f / 5f),
+    SQUARE_1_1("Kotak Studio (1:1)", "1:1", false, 1.0f)
 }
 
 enum class VideoCodecOption(val label: String, val subtitle: String, val requiresPro: Boolean) {
@@ -106,19 +114,24 @@ enum class VideoQualityPreset(
     val maxBitrateBps: Int,
     val requiresPro: Boolean
 ) {
-    HD_720P_30("720p • 30fps", "HD 720p 30 FPS (Hemat Data)", 720, 1280, 30, 2_800_000, false),
+    SD_540P_30("540p • 30fps", "SD 540p 30 FPS (Hemat Sinyal)", 540, 960, 30, 1_800_000, false),
+    HD_720P_30("720p • 30fps", "HD 720p 30 FPS (Stabil Harian)", 720, 1280, 30, 2_800_000, false),
     HD_720P_60("720p • 60fps", "HD 720p 60 FPS (Standar Game)", 720, 1280, 60, 4_200_000, false),
     FHD_1080P_60("1080p • 60fps", "Full HD 1080p 60 FPS Pro (Mulai Paket Harian)", 1080, 1920, 60, 6_200_000, true);
 
-    fun resolveDimensions(orientation: StreamOrientation): Pair<Int, Int> =
-        if (orientation.isPortrait) shortSide to longSide else longSide to shortSide
+    fun resolveDimensions(orientation: StreamOrientation): Pair<Int, Int> = when (orientation) {
+        StreamOrientation.PORTRAIT_9_16 -> shortSide to longSide
+        StreamOrientation.LANDSCAPE_16_9 -> longSide to shortSide
+        StreamOrientation.CREATOR_4_5 -> shortSide to (((shortSide * 5) / 4) and -2)
+        StreamOrientation.SQUARE_1_1 -> shortSide to shortSide
+    }
 }
 
 enum class StudioScene(val label: String, val description: String, val requiresPro: Boolean) {
     GAMEPLAY("Layar Game", "Tangkap layar penuh + layer overlay aktif", false),
     STARTING_SOON("Segera Mulai", "Layar pembuka siaran + hitung mundur", false),
     INTERMISSION_BRB("Istirahat (BRB)", "Tampilan tunggu sementara (Pro)", true),
-    IRL_CAMERA("Kamera Penuh", "Kamera depan/belakang OIS untuk ngobrol (Pro)", true),
+    IRL_CAMERA("Kamera Penuh", "Kamera depan/belakang jernih untuk ngobrol (Pro)", true),
     PRIVACY_SHIELD("Layar Privasi", "Tutup instan saat ketik OTP / buka chat", false)
 }
 
@@ -184,8 +197,9 @@ data class CustomTextLayer(
     val id: String,
     val content: String,
     val xPercent: Int = 6,
-    val yPercent: Int = 14,
-    val fontSizeSp: Int = 15,
+    val yPercent: Int = 28,
+    val fontSizeSp: Int = 14,
+    val accentHex: String = "#FFFFFF",
     val backgroundPill: Boolean = true,
     val visible: Boolean = true
 )
@@ -197,11 +211,11 @@ enum class StreamStatus {
 data class StreamSettings(
     val themeMode: StudioThemeMode = StudioThemeMode.DARK,
 
-    // SaaS Subscription & Exclusive Pro Cloud Features
+    // SaaS Subscription & Real Cloud Gateway (Pakasir API v2 + Vercel Production Cloud)
     val saasTier: SaasPlanTier = SaasPlanTier.FREE,
     val saasLicenseToken: String = "",
     val saasExpiresAtMillis: Long = 0L,
-    val saasBackendUrl: String = "http://localhost:21213",
+    val saasBackendUrl: String = "https://distream-studio-cloud.vercel.app",
     val subscriberEmail: String = "",
     val simulcastEnabled: Boolean = false,
     val simulcastYoutubeKey: String = "",
@@ -209,15 +223,19 @@ data class StreamSettings(
     val smartTtsDonationEnabled: Boolean = true,
     val cloudFailoverShieldEnabled: Boolean = true,
 
-    // Broadcast Destination & Encoder
+    // Broadcast Destination & Granular Manual/Preset Encoder Controls
     val destinationPreset: RtmpDestinationPreset = RtmpDestinationPreset.TIKTOK_RTMPS,
     val serverUrl: String = "rtmps://push.rtmp.tiktok.com/live",
     val streamKey: String = "",
     val orientation: StreamOrientation = StreamOrientation.PORTRAIT_9_16,
     val videoCodec: VideoCodecOption = VideoCodecOption.H264_AVC,
     val qualityPreset: VideoQualityPreset = VideoQualityPreset.HD_720P_60,
+    val manualBitrateKbps: Int = 4200,
+    val manualFps: Int = 60,
     val adaptiveBitrate: Boolean = true,
     val showSafeZoneGuide: Boolean = true,
+    val showGridGuide: Boolean = false,
+    val cameraFrontLens: Boolean = true,
 
     // Scene & Visual Preset
     val activeScene: StudioScene = StudioScene.GAMEPLAY,
@@ -226,8 +244,23 @@ data class StreamSettings(
     val likeTargetCount: Int = 10_000,
     val colorGrade: ColorGradePreset = ColorGradePreset.VIVID_GAME,
     val streamTitleHeadline: String = "Mabar Santai Push Rank Malam Ini",
-    val subathonTimerVisible: Boolean = false,
+    val subathonTimerVisible: Boolean = true,
     val subathonRemainingSeconds: Int = 3600,
+
+    // Interactive WYSIWYG Canvas Coordinates (0..100% Normalized Stage Space + Scale)
+    val goalXPercent: Float = 5f,
+    val goalYPercent: Float = 5f,
+    val goalScale: Float = 1.0f,
+    val loveXPercent: Float = 54f,
+    val loveYPercent: Float = 16f,
+    val loveScale: Float = 1.0f,
+    val subathonXPercent: Float = 5f,
+    val subathonYPercent: Float = 18f,
+    val subathonScale: Float = 1.0f,
+    val facecamXPercent: Float = 64f,
+    val facecamYPercent: Float = 58f,
+    val facecamScale: Float = 1.0f,
+    val tickerYPercent: Float = 91f,
 
     // Multi-Layer Overlay & Teks Kustom
     val overlayMasterEnabled: Boolean = true,
@@ -247,8 +280,9 @@ data class StreamSettings(
             id = "txt_1",
             content = "ID Game: 82910422 (Open Slot)",
             xPercent = 6,
-            yPercent = 12,
+            yPercent = 28,
             fontSizeSp = 13,
+            accentHex = "#FFFFFF",
             backgroundPill = true,
             visible = true
         )
@@ -256,8 +290,9 @@ data class StreamSettings(
 
     // Floating Control & Facecam
     val floatingHudEnabled: Boolean = true,
-    val floatingFacecamEnabled: Boolean = false,
+    val floatingFacecamEnabled: Boolean = true,
     val facecamSizeIndex: Int = 1,
+    val hudOpacityPercent: Int = 92,
 
     // Audio & SoundFX
     val audioMode: AudioCaptureMode = AudioCaptureMode.MIX_GAME_AND_MIC,
@@ -278,7 +313,7 @@ data class StreamSettings(
 
     // Live Event Relay
     val tiktokUsername: String = "",
-    val chatWebSocketUrl: String = "ws://localhost:21213/"
+    val chatWebSocketUrl: String = "wss://distream-studio-cloud.vercel.app/"
 ) {
     fun buildFullEndpoint(): String {
         val cleanBase = serverUrl.trim().trimEnd('/')
@@ -310,6 +345,9 @@ data class StreamRuntimeState(
     val status: StreamStatus = StreamStatus.IDLE,
     val statusMessage: String = "Siap Siaran",
     val activeScene: StudioScene = StudioScene.GAMEPLAY,
+    val isFloatingTestActive: Boolean = false,
+    val activeAlertBannerTitle: String = "",
+    val activeAlertBannerDetail: String = "",
     val currentBitrateKbps: Int = 0,
     val peakBitrateKbps: Int = 0,
     val estimatedIdrRevenue: Long = 0L,
@@ -330,7 +368,7 @@ data class StreamRuntimeState(
     val isRecordingLocal: Boolean = false,
     val isTorchActive: Boolean = false,
     val activeSfxName: String = "",
-    val micLevelNormalized: Float = 0.06f,
+    val micLevelNormalized: Float = 0.08f,
     val gameLevelNormalized: Float = 0.04f,
     val sfxLevelNormalized: Float = 0.0f,
     val lastSnapshotName: String = "",

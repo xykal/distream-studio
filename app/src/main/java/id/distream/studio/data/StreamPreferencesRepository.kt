@@ -22,6 +22,7 @@ import id.distream.studio.model.StreamSettings
 import id.distream.studio.model.StudioThemeMode
 import id.distream.studio.model.VideoCodecOption
 import id.distream.studio.model.VideoQualityPreset
+import id.distream.studio.saas.SaasSubscriptionManager
 import id.distream.studio.security.StreamKeyVault
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -29,7 +30,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 private val Context.distreamDataStore: DataStore<Preferences> by preferencesDataStore(
-    name = "distream_studio_v3_prefs"
+    name = "distream_studio_v4_prefs"
 )
 
 class StreamPreferencesRepository(private val appContext: Context) {
@@ -54,8 +55,12 @@ class StreamPreferencesRepository(private val appContext: Context) {
         val ORIENTATION = stringPreferencesKey("orientation")
         val VIDEO_CODEC = stringPreferencesKey("video_codec")
         val QUALITY_PRESET = stringPreferencesKey("quality_preset")
+        val MANUAL_BITRATE_KBPS = intPreferencesKey("manual_bitrate_kbps")
+        val MANUAL_FPS = intPreferencesKey("manual_fps")
         val ADAPTIVE_BITRATE = booleanPreferencesKey("adaptive_bitrate")
         val SAFE_ZONE = booleanPreferencesKey("safe_zone")
+        val GRID_GUIDE = booleanPreferencesKey("grid_guide")
+        val CAM_FRONT_LENS = booleanPreferencesKey("cam_front_lens")
 
         val FRAME_PRESET = stringPreferencesKey("frame_preset")
         val LOVE_PRESET = stringPreferencesKey("love_preset")
@@ -64,6 +69,20 @@ class StreamPreferencesRepository(private val appContext: Context) {
         val HEADLINE = stringPreferencesKey("headline")
         val SUBATHON_VIS = booleanPreferencesKey("subathon_vis")
         val SUBATHON_SEC = intPreferencesKey("subathon_sec")
+
+        val GOAL_X = floatPreferencesKey("goal_x")
+        val GOAL_Y = floatPreferencesKey("goal_y")
+        val GOAL_SCALE = floatPreferencesKey("goal_scale")
+        val LOVE_X = floatPreferencesKey("love_x")
+        val LOVE_Y = floatPreferencesKey("love_y")
+        val LOVE_SCALE = floatPreferencesKey("love_scale")
+        val SUBATHON_X = floatPreferencesKey("subathon_x")
+        val SUBATHON_Y = floatPreferencesKey("subathon_y")
+        val SUBATHON_SCALE = floatPreferencesKey("subathon_scale")
+        val FACECAM_X = floatPreferencesKey("facecam_x")
+        val FACECAM_Y = floatPreferencesKey("facecam_y")
+        val FACECAM_SCALE = floatPreferencesKey("facecam_scale")
+        val TICKER_Y = floatPreferencesKey("ticker_y")
 
         val OVERLAY_MASTER = booleanPreferencesKey("overlay_master")
         val OVERLAY_PRIMARY_URL = stringPreferencesKey("overlay_primary_url")
@@ -82,6 +101,7 @@ class StreamPreferencesRepository(private val appContext: Context) {
         val FLOATING_HUD = booleanPreferencesKey("floating_hud")
         val FLOATING_FACECAM = booleanPreferencesKey("floating_facecam")
         val FACECAM_SIZE = intPreferencesKey("facecam_size")
+        val HUD_OPACITY = intPreferencesKey("hud_opacity")
 
         val AUDIO_MODE = stringPreferencesKey("audio_mode")
         val MIC_GAIN = floatPreferencesKey("mic_gain")
@@ -115,7 +135,9 @@ class StreamPreferencesRepository(private val appContext: Context) {
             saasTier = enumOrDefault(prefs[Keys.SAAS_TIER], SaasPlanTier.FREE),
             saasLicenseToken = decryptedLicense,
             saasExpiresAtMillis = prefs[Keys.SAAS_EXPIRES_MS] ?: 0L,
-            saasBackendUrl = prefs[Keys.SAAS_BACKEND_URL] ?: "http://localhost:21213",
+            saasBackendUrl = SaasSubscriptionManager.normalizeCloudUrl(
+                prefs[Keys.SAAS_BACKEND_URL].orEmpty()
+            ),
             subscriberEmail = prefs[Keys.SUBSCRIBER_EMAIL] ?: "",
             simulcastEnabled = prefs[Keys.SIMULCAST_ENABLED] ?: false,
             simulcastYoutubeKey = decryptedYt,
@@ -128,15 +150,32 @@ class StreamPreferencesRepository(private val appContext: Context) {
             orientation = enumOrDefault(prefs[Keys.ORIENTATION], StreamOrientation.PORTRAIT_9_16),
             videoCodec = enumOrDefault(prefs[Keys.VIDEO_CODEC], VideoCodecOption.H264_AVC),
             qualityPreset = enumOrDefault(prefs[Keys.QUALITY_PRESET], VideoQualityPreset.HD_720P_60),
+            manualBitrateKbps = prefs[Keys.MANUAL_BITRATE_KBPS] ?: 4200,
+            manualFps = prefs[Keys.MANUAL_FPS] ?: 60,
             adaptiveBitrate = prefs[Keys.ADAPTIVE_BITRATE] ?: true,
             showSafeZoneGuide = prefs[Keys.SAFE_ZONE] ?: true,
+            showGridGuide = prefs[Keys.GRID_GUIDE] ?: false,
+            cameraFrontLens = prefs[Keys.CAM_FRONT_LENS] ?: true,
             framePreset = enumOrDefault(prefs[Keys.FRAME_PRESET], OverlayFramePreset.CLEAN_CREATOR),
             loveTapPreset = enumOrDefault(prefs[Keys.LOVE_PRESET], LoveTapPreset.TAP_LOVE_PILL),
             likeTargetCount = prefs[Keys.LIKE_TARGET] ?: 10_000,
             colorGrade = enumOrDefault(prefs[Keys.COLOR_GRADE], ColorGradePreset.VIVID_GAME),
             streamTitleHeadline = prefs[Keys.HEADLINE] ?: "Mabar Santai Push Rank Malam Ini",
-            subathonTimerVisible = prefs[Keys.SUBATHON_VIS] ?: false,
+            subathonTimerVisible = prefs[Keys.SUBATHON_VIS] ?: true,
             subathonRemainingSeconds = prefs[Keys.SUBATHON_SEC] ?: 3600,
+            goalXPercent = prefs[Keys.GOAL_X] ?: 5f,
+            goalYPercent = prefs[Keys.GOAL_Y] ?: 5f,
+            goalScale = prefs[Keys.GOAL_SCALE] ?: 1.0f,
+            loveXPercent = prefs[Keys.LOVE_X] ?: 54f,
+            loveYPercent = prefs[Keys.LOVE_Y] ?: 16f,
+            loveScale = prefs[Keys.LOVE_SCALE] ?: 1.0f,
+            subathonXPercent = prefs[Keys.SUBATHON_X] ?: 5f,
+            subathonYPercent = prefs[Keys.SUBATHON_Y] ?: 18f,
+            subathonScale = prefs[Keys.SUBATHON_SCALE] ?: 1.0f,
+            facecamXPercent = prefs[Keys.FACECAM_X] ?: 64f,
+            facecamYPercent = prefs[Keys.FACECAM_Y] ?: 58f,
+            facecamScale = prefs[Keys.FACECAM_SCALE] ?: 1.0f,
+            tickerYPercent = prefs[Keys.TICKER_Y] ?: 91f,
             overlayMasterEnabled = prefs[Keys.OVERLAY_MASTER] ?: true,
             primaryOverlayUrl = prefs[Keys.OVERLAY_PRIMARY_URL] ?: "",
             primaryOverlayVisible = prefs[Keys.OVERLAY_PRIMARY_VIS] ?: true,
@@ -152,8 +191,9 @@ class StreamPreferencesRepository(private val appContext: Context) {
             watermarkVisible = prefs[Keys.WATERMARK_VIS] ?: true,
             customTextLayers = decodeCustomTexts(prefs[Keys.CUSTOM_TEXTS_JSON]),
             floatingHudEnabled = prefs[Keys.FLOATING_HUD] ?: true,
-            floatingFacecamEnabled = prefs[Keys.FLOATING_FACECAM] ?: false,
+            floatingFacecamEnabled = prefs[Keys.FLOATING_FACECAM] ?: true,
             facecamSizeIndex = prefs[Keys.FACECAM_SIZE] ?: 1,
+            hudOpacityPercent = prefs[Keys.HUD_OPACITY] ?: 92,
             audioMode = enumOrDefault(prefs[Keys.AUDIO_MODE], AudioCaptureMode.MIX_GAME_AND_MIC),
             micGain = prefs[Keys.MIC_GAIN] ?: 2.0f,
             gameGain = prefs[Keys.GAME_GAIN] ?: 1.0f,
@@ -168,7 +208,7 @@ class StreamPreferencesRepository(private val appContext: Context) {
             profanityChatFilter = prefs[Keys.PROFANITY_FILTER] ?: true,
             dndGuardWarning = prefs[Keys.DND_WARNING] ?: true,
             tiktokUsername = prefs[Keys.TIKTOK_USERNAME] ?: "",
-            chatWebSocketUrl = prefs[Keys.CHAT_WS_URL] ?: "ws://localhost:21213/"
+            chatWebSocketUrl = prefs[Keys.CHAT_WS_URL] ?: "wss://distream-studio-cloud.vercel.app/"
         )
     }
 
@@ -191,8 +231,12 @@ class StreamPreferencesRepository(private val appContext: Context) {
             prefs[Keys.ORIENTATION] = s.orientation.name
             prefs[Keys.VIDEO_CODEC] = s.videoCodec.name
             prefs[Keys.QUALITY_PRESET] = s.qualityPreset.name
+            prefs[Keys.MANUAL_BITRATE_KBPS] = s.manualBitrateKbps
+            prefs[Keys.MANUAL_FPS] = s.manualFps
             prefs[Keys.ADAPTIVE_BITRATE] = s.adaptiveBitrate
             prefs[Keys.SAFE_ZONE] = s.showSafeZoneGuide
+            prefs[Keys.GRID_GUIDE] = s.showGridGuide
+            prefs[Keys.CAM_FRONT_LENS] = s.cameraFrontLens
             prefs[Keys.FRAME_PRESET] = s.framePreset.name
             prefs[Keys.LOVE_PRESET] = s.loveTapPreset.name
             prefs[Keys.LIKE_TARGET] = s.likeTargetCount
@@ -200,6 +244,19 @@ class StreamPreferencesRepository(private val appContext: Context) {
             prefs[Keys.HEADLINE] = s.streamTitleHeadline
             prefs[Keys.SUBATHON_VIS] = s.subathonTimerVisible
             prefs[Keys.SUBATHON_SEC] = s.subathonRemainingSeconds
+            prefs[Keys.GOAL_X] = s.goalXPercent
+            prefs[Keys.GOAL_Y] = s.goalYPercent
+            prefs[Keys.GOAL_SCALE] = s.goalScale
+            prefs[Keys.LOVE_X] = s.loveXPercent
+            prefs[Keys.LOVE_Y] = s.loveYPercent
+            prefs[Keys.LOVE_SCALE] = s.loveScale
+            prefs[Keys.SUBATHON_X] = s.subathonXPercent
+            prefs[Keys.SUBATHON_Y] = s.subathonYPercent
+            prefs[Keys.SUBATHON_SCALE] = s.subathonScale
+            prefs[Keys.FACECAM_X] = s.facecamXPercent
+            prefs[Keys.FACECAM_Y] = s.facecamYPercent
+            prefs[Keys.FACECAM_SCALE] = s.facecamScale
+            prefs[Keys.TICKER_Y] = s.tickerYPercent
             prefs[Keys.OVERLAY_MASTER] = s.overlayMasterEnabled
             prefs[Keys.OVERLAY_PRIMARY_URL] = s.primaryOverlayUrl
             prefs[Keys.OVERLAY_PRIMARY_VIS] = s.primaryOverlayVisible
@@ -216,6 +273,7 @@ class StreamPreferencesRepository(private val appContext: Context) {
             prefs[Keys.FLOATING_HUD] = s.floatingHudEnabled
             prefs[Keys.FLOATING_FACECAM] = s.floatingFacecamEnabled
             prefs[Keys.FACECAM_SIZE] = s.facecamSizeIndex
+            prefs[Keys.HUD_OPACITY] = s.hudOpacityPercent
             prefs[Keys.AUDIO_MODE] = s.audioMode.name
             prefs[Keys.MIC_GAIN] = s.micGain
             prefs[Keys.GAME_GAIN] = s.gameGain
@@ -243,6 +301,7 @@ class StreamPreferencesRepository(private val appContext: Context) {
                 put("x", item.xPercent)
                 put("y", item.yPercent)
                 put("size", item.fontSizeSp)
+                put("hex", item.accentHex)
                 put("pill", item.backgroundPill)
                 put("vis", item.visible)
             })
@@ -253,7 +312,7 @@ class StreamPreferencesRepository(private val appContext: Context) {
     private fun decodeCustomTexts(json: String?): List<CustomTextLayer> {
         if (json.isNullOrBlank()) {
             return listOf(
-                CustomTextLayer("txt_1", "ID Game: 82910422 (Open Slot)", 6, 12, 13, true, true)
+                CustomTextLayer("txt_1", "ID Game: 82910422 (Open Slot)", 6, 28, 13, "#FFFFFF", true, true)
             )
         }
         return runCatching {
@@ -266,8 +325,9 @@ class StreamPreferencesRepository(private val appContext: Context) {
                             id = o.optString("id", "txt_$i"),
                             content = o.optString("content", ""),
                             xPercent = o.optInt("x", 6),
-                            yPercent = o.optInt("y", 12),
+                            yPercent = o.optInt("y", 28),
                             fontSizeSp = o.optInt("size", 13),
+                            accentHex = o.optString("hex", "#FFFFFF"),
                             backgroundPill = o.optBoolean("pill", true),
                             visible = o.optBoolean("vis", true)
                         )

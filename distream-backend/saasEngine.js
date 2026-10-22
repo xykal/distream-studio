@@ -1,17 +1,21 @@
 /**
- * DiStream Studio SaaS Subscription, Cryptographic Licensing & Payment Engine
+ * DiStream Studio v4.0 — Real Pakasir API v2 + Stateless Cloud Licensing & Resend Engine
  *
- * Fitur:
- * - Katalog Langganan Harian (Rp 5.000), Mingguan (Rp 19.000), Bulanan VIP (Rp 59.000) & Starter Gratis
- * - Integrasi Payment Gateway Pakasir QRIS (POST /api/transactioncreate/qris & GET /api/transactiondetail)
- * - Pengiriman Email Bukti Aktivasi & Kode Lisensi via Resend API
- * - Signed License Token HMAC-SHA256 (`DST1.<payload>.<signature>`) terikat Device ID + Anti-Tamper
- * - Cloud Multi-Stream Simulcast Relay & Anti-Disconnect Failover Shield Gatekeeping
+ * Endpoint Gateway Resmi Pakasir API v2 (https://pakasir.com/p/create-transaction):
+ * - POST https://app.pakasir.com/api/v2/create-transaction/{slug}/{order_id}  (Header: X-Api-Key)
+ * - GET  https://app.pakasir.com/api/v2/transaction-status/{slug}/{txn_id}    (Header: X-Api-Key)
+ * - POST https://app.pakasir.com/api/v2/payment-simulation/{slug}/{txn_id}    (Header: X-Api-Key, khusus proyek Sandbox Pakasir)
+ * - Hosted Checkout: https://app.pakasir.com/pay-v2/{txn_id}?qris_only=1
+ *
+ * Mendukung mode Stateful (VPS / Docker WebSocket Server) sekaligus Stateless Serverless (Vercel Cloud)
+ * melalui amplop order bertanda tangan HMAC-SHA256 (`DSO1.<payload>.<hmac>`) dan token lisensi
+ * terikat perangkat (`DST1.<payload>.<hmac>`).
  */
 
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const QRCode = require("qrcode");
 
 function loadDotEnv() {
   const candidates = [
@@ -156,7 +160,8 @@ class SaasBillingEngine {
     this.pakasirApiKey = options.pakasirApiKey ?? process.env.PAKASIR_API_KEY ?? "";
     this.resendApiKey = options.resendApiKey ?? process.env.RESEND_EMAIL_API_KEY ?? "";
     this.sandboxMode = options.sandboxMode ?? (process.env.PAKASIR_SANDBOX !== "false");
-    this.enableExternalGatewayCalls = options.enableExternalGatewayCalls ?? false;
+    this.enableExternalGatewayCalls =
+      options.enableExternalGatewayCalls ?? Boolean(this.pakasirProject && this.pakasirApiKey);
 
     this.orders = new Map();
     this.usedDeviceTrials = new Set();
@@ -166,6 +171,74 @@ class SaasBillingEngine {
 
   getPlansCatalog() {
     return Object.values(SAAS_PLANS);
+  }
+
+  signOrderEnvelope(orderObj) {
+    const slim = {
+      orderId: orderObj.orderId,
+      txnId: orderObj.txnId || "",
+      planId: orderObj.planId,
+      planName: orderObj.planName,
+      deviceId: orderObj.deviceId,
+      email: orderObj.email || "",
+      baseAmount: orderObj.baseAmount,
+      discountPercent: orderObj.discountPercent,
+      amount: orderObj.amount,
+      fee: orderObj.fee,
+      totalPayment: orderObj.totalPayment,
+      durationHours: orderObj.durationHours,
+      qrisString: orderObj.qrisString || "",
+      paymentUrl: orderObj.paymentUrl || "",
+      isSandbox: Boolean(orderObj.isSandbox),
+      gatewayLive: Boolean(orderObj.gatewayLive),
+      createdAt: orderObj.createdAt
+    };
+    const encoded = Buffer.from(JSON.stringify(slim), "utf8").toString("base64url");
+    const sig = crypto
+      .createHmac("sha256", this.signingSecret)
+      .update(`DSO1.${encoded}`)
+      .digest("base64url");
+    return `DSO1.${encoded}.${sig}`;
+  }
+
+  verifyOrderEnvelope(orderToken) {
+    if (!orderToken || typeof orderToken !== "string") return null;
+    const parts = orderToken.trim().split(".");
+    if (parts.length !== 3 || parts[0] !== "DSO1") return null;
+    const [, encoded, providedSig] = parts;
+    const expectedSig = crypto
+      .createHmac("sha256", this.signingSecret)
+      .update(`DSO1.${encoded}`)
+      .digest("base64url");
+    const bufA = Buffer.from(providedSig, "utf8");
+    const bufB = Buffer.from(expectedSig, "utf8");
+    if (bufA.length !== bufB.length || !crypto.timingSafeEqual(bufA, bufB)) return null;
+    try {
+      return JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
+    } catch {
+      return null;
+    }
+  }
+
+  resolveOrder(orderId, orderToken = null) {
+    if (orderId && this.orders.has(orderId)) {
+      return this.orders.get(orderId);
+    }
+    const decoded = this.verifyOrderEnvelope(orderToken);
+    if (decoded && (!orderId || decoded.orderId === orderId)) {
+      const restored = {
+        ...decoded,
+        paymentMethod: "QRIS",
+        status: "pending",
+        licenseToken: null,
+        expiresAt: null,
+        completedAt: null,
+        orderToken
+      };
+      this.orders.set(restored.orderId, restored);
+      return restored;
+    }
+    return null;
   }
 
   signLicenseToken(payloadObj) {
@@ -272,15 +345,15 @@ class SaasBillingEngine {
 
     const discountPct = promo ? promo.discountPercent : 0;
     const finalAmount = Math.max(0, Math.round(plan.priceIdr * (1 - discountPct / 100)));
-    const orderId = `DST-${plan.id}-${Date.now()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+    const orderId = `DST${plan.id.slice(0, 3)}${Date.now()}${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
     const durationHours = promo?.forcedHours || plan.durationHours;
 
-    // Jika promo 100% (Trial Gratis), langsung terbitkan lisensi aktif tanpa menunggu bayar
     if (finalAmount === 0) {
       if (promo?.oncePerDevice) this.usedDeviceTrials.add(cleanDevice);
       const issued = this.issueLicense(plan.id, cleanDevice, durationHours, orderId);
       const freeOrder = {
         orderId,
+        txnId: "",
         planId: plan.id,
         planName: plan.name,
         deviceId: cleanDevice,
@@ -295,51 +368,78 @@ class SaasBillingEngine {
         durationHours,
         qrisString: "",
         paymentUrl: "",
+        isSandbox: false,
+        gatewayLive: true,
         licenseToken: issued.licenseToken,
         expiresAt: issued.expiresAt,
         createdAt: Date.now(),
         completedAt: Date.now()
       };
+      freeOrder.orderToken = this.signOrderEnvelope(freeOrder);
       this.orders.set(orderId, freeOrder);
       return freeOrder;
     }
 
     const projectSlug = this.pakasirProject || "distream";
-    const hostedPaymentUrl = `https://app.pakasir.com/pay/${encodeURIComponent(projectSlug)}/${finalAmount}?order_id=${encodeURIComponent(orderId)}&qris_only=1`;
     const estimatedFee = Math.round(finalAmount * 0.007) + 310;
-
+    let txnId = "";
     let qrisString = `00020101021226660014ID.CO.DISTREAM.WWW011893600914${orderId.slice(-10)}520458155303360540${finalAmount}5802ID5915DISTREAM STUDIO6007JAKARTA6304A1B2`;
     let fee = estimatedFee;
     let totalPayment = finalAmount + estimatedFee;
+    let hostedPaymentUrl = `https://app.pakasir.com/pay/${encodeURIComponent(projectSlug)}/${finalAmount}?order_id=${encodeURIComponent(orderId)}&qris_only=1`;
+    let isSandbox = Boolean(this.sandboxMode);
+    let gatewayLive = false;
 
+    // Panggilan REAL ke Pakasir API v2 (https://app.pakasir.com/api/v2/create-transaction/{slug}/{order_id})
     if (this.enableExternalGatewayCalls && this.pakasirProject && this.pakasirApiKey) {
       try {
-        const resp = await fetch("https://app.pakasir.com/api/transactioncreate/qris", {
+        const createUrl = `https://app.pakasir.com/api/v2/create-transaction/${encodeURIComponent(this.pakasirProject)}/${encodeURIComponent(orderId)}`;
+        const resp = await fetch(createUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "X-Api-Key": this.pakasirApiKey,
+            "User-Agent": "DiStreamStudio/4.0"
+          },
           body: JSON.stringify({
-            project: this.pakasirProject,
-            order_id: orderId,
-            amount: finalAmount,
-            api_key: this.pakasirApiKey
+            method: "qris",
+            amount: finalAmount
           })
         });
         if (resp.ok) {
           const data = await resp.json();
-          const p = data?.payment;
-          if (p) {
-            qrisString = p.payment_number || qrisString;
-            fee = Number(p.fee ?? fee);
-            totalPayment = Number(p.total_payment ?? totalPayment);
+          if (data && data.txn_id) {
+            txnId = String(data.txn_id);
+            fee = Number(data.fee ?? fee);
+            totalPayment = Number(data.total_payment ?? totalPayment);
+            hostedPaymentUrl = `https://app.pakasir.com/pay-v2/${encodeURIComponent(txnId)}?qris_only=1`;
+            qrisString =
+              data.qr_string && !String(data.qr_string).startsWith("qris-placeholder")
+                ? String(data.qr_string)
+                : hostedPaymentUrl;
+            isSandbox = Boolean(data.is_sandbox);
+            gatewayLive = true;
           }
         }
       } catch {
-        // Fallback aman ke hosted payment URL Pakasir
+        // Fallback aman bila jaringan eksternal sedang gangguan
       }
+    }
+
+    let qrSvgDataUrl = "";
+    try {
+      qrSvgDataUrl = await QRCode.toDataURL(qrisString || hostedPaymentUrl, {
+        errorCorrectionLevel: "M",
+        margin: 1,
+        width: 300
+      });
+    } catch {
+      qrSvgDataUrl = "";
     }
 
     const order = {
       orderId,
+      txnId,
       planId: plan.id,
       planName: plan.name,
       deviceId: cleanDevice,
@@ -353,47 +453,110 @@ class SaasBillingEngine {
       status: "pending",
       durationHours,
       qrisString,
+      qrSvgDataUrl,
       paymentUrl: hostedPaymentUrl,
+      isSandbox,
+      gatewayLive,
       licenseToken: null,
       expiresAt: null,
       createdAt: Date.now(),
       completedAt: null
     };
+    order.orderToken = this.signOrderEnvelope(order);
     this.orders.set(orderId, order);
     return order;
   }
 
-  async settleOrder(orderId, { verifyWithPakasir = false } = {}) {
-    const order = this.orders.get(orderId);
+  async syncLiveStatusWithPakasir(orderId, orderToken = null) {
+    const order = this.resolveOrder(orderId, orderToken);
+    if (!order) {
+      const err = new Error("Order tidak ditemukan");
+      err.statusCode = 404;
+      throw err;
+    }
+    if (order.status === "completed" && order.licenseToken) {
+      return order;
+    }
+    if (this.enableExternalGatewayCalls && this.pakasirProject && this.pakasirApiKey && order.txnId) {
+      try {
+        const statusUrl = `https://app.pakasir.com/api/v2/transaction-status/${encodeURIComponent(this.pakasirProject)}/${encodeURIComponent(order.txnId)}`;
+        const resp = await fetch(statusUrl, {
+          headers: {
+            "X-Api-Key": this.pakasirApiKey,
+            "User-Agent": "DiStreamStudio/4.0"
+          }
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data?.status === "completed" && Number(data.amount) === order.amount) {
+            return await this.settleOrder(order.orderId, {
+              verifyWithPakasir: false,
+              orderToken
+            });
+          }
+          if (data?.status === "canceled") {
+            order.status = "canceled";
+          }
+        }
+      } catch {
+        // Biarkan tetap pending hingga poll berikutnya
+      }
+    }
+    return order;
+  }
+
+  async settleOrder(orderId, { verifyWithPakasir = false, orderToken = null, triggerPakasirSandboxApi = false } = {}) {
+    const order = this.resolveOrder(orderId, orderToken);
     if (!order) {
       const err = new Error("Order tidak ditemukan");
       err.statusCode = 404;
       throw err;
     }
 
-    // Idempotent settlement guard: jangan pernah menerbitkan dua kali
     if (order.status === "completed" && order.licenseToken) {
       return order;
     }
 
-    if (verifyWithPakasir && !this.sandboxMode) {
-      if (!this.pakasirProject || !this.pakasirApiKey) {
-        const err = new Error("Konfigurasi verifikasi gateway belum aktif");
-        err.statusCode = 503;
-        throw err;
+    // Jika proyek Pakasir milik merchant berstatus Sandbox di app.pakasir.com, picu API resmi Pakasir v2 payment-simulation
+    if (
+      triggerPakasirSandboxApi &&
+      this.enableExternalGatewayCalls &&
+      this.pakasirProject &&
+      this.pakasirApiKey &&
+      order.txnId &&
+      order.isSandbox
+    ) {
+      const simUrl = `https://app.pakasir.com/api/v2/payment-simulation/${encodeURIComponent(this.pakasirProject)}/${encodeURIComponent(order.txnId)}`;
+      await fetch(simUrl, {
+        method: "POST",
+        headers: {
+          "X-Api-Key": this.pakasirApiKey,
+          "User-Agent": "DiStreamStudio/4.0"
+        }
+      });
+    }
+
+    if (verifyWithPakasir && this.pakasirProject && this.pakasirApiKey && order.txnId) {
+      const statusUrl = `https://app.pakasir.com/api/v2/transaction-status/${encodeURIComponent(this.pakasirProject)}/${encodeURIComponent(order.txnId)}`;
+      const reqHeaders = {
+        "X-Api-Key": this.pakasirApiKey,
+        "User-Agent": "DiStreamStudio/4.0"
+      };
+      let checkResp = await fetch(statusUrl, { headers: reqHeaders });
+      if (checkResp.status === 429) {
+        await new Promise((r) => setTimeout(r, 4150));
+        checkResp = await fetch(statusUrl, { headers: reqHeaders });
       }
-      const detailUrl =
-        `https://app.pakasir.com/api/transactiondetail?project=${encodeURIComponent(this.pakasirProject)}` +
-        `&order_id=${encodeURIComponent(order.orderId)}&amount=${order.amount}` +
-        `&api_key=${encodeURIComponent(this.pakasirApiKey)}`;
-      const checkResp = await fetch(detailUrl);
       const checkJson = await checkResp.json();
-      const tx = checkJson?.transaction;
-      if (!tx || tx.status !== "completed" || Number(tx.amount) !== order.amount) {
-        const err = new Error("Pembayaran belum terkonfirmasi lunas oleh Pakasir");
+      if (!checkJson || checkJson.status !== "completed" || Number(checkJson.amount) !== order.amount) {
+        const err = new Error("Pembayaran belum terkonfirmasi lunas di sistem Pakasir");
         err.statusCode = 402;
         throw err;
       }
+    } else if (verifyWithPakasir && !this.sandboxMode) {
+      const err = new Error("Konfigurasi verifikasi gateway belum aktif");
+      err.statusCode = 503;
+      throw err;
     }
 
     const issued = this.issueLicense(order.planId, order.deviceId, order.durationHours, order.orderId);
@@ -403,19 +566,23 @@ class SaasBillingEngine {
     order.completedAt = Date.now();
 
     if (this.enableExternalGatewayCalls && this.resendApiKey && order.email) {
-      fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.resendApiKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          from: process.env.DISTREAM_FROM_EMAIL || "DiStream Studio <onboarding@resend.dev>",
-          to: [order.email],
-          subject: `Lisensi Aktif DiStream Studio — ${order.planName}`,
-          text: `Terima kasih! Paket ${order.planName} (${order.orderId}) sudah aktif.\nToken Lisensi Anda:\n${order.licenseToken}`
-        })
-      }).catch(() => {});
+      try {
+        await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.resendApiKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            from: process.env.DISTREAM_FROM_EMAIL || "DiStream Studio <onboarding@resend.dev>",
+            to: [order.email],
+            subject: `Lisensi Aktif DiStream Studio — ${order.planName}`,
+            text: `Terima kasih! Paket ${order.planName} (${order.orderId}) sudah aktif.\nToken Lisensi Anda:\n${order.licenseToken}`
+          })
+        });
+      } catch {
+        // Pengiriman email gagal tidak membatalkan lisensi yang sudah dibayar
+      }
     }
 
     return order;

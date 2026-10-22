@@ -1,55 +1,35 @@
-# DiStream Studio v3.0
+# DiStream Studio v4.0 — Real Live Broadcast & Custom Creator Studio
 
-[![DiStream Studio CI/CD, QA & Release APK](https://github.com/xykal/distream-studio/actions/workflows/ci-build-qa.yml/badge.svg)](https://github.com/xykal/distream-studio/actions/workflows/ci-build-qa.yml)
+**Aplikasi Mobile Live Streaming & Creator Broadcast Studio Android + Cloud SaaS Platform (`id.distream.studio` • `v4.0.0`)**
 
-**DiStream Studio** (`id.distream.studio`) adalah platform mobile live broadcasting kelas studio setara **OBS Studio + TikTok Live Studio** di Android berbasis **Kotlin Native, Jetpack Compose Material 3, RootEncoder 2.8.1, Real-Time 48kHz PCM Audio DSP, Multi-Layer OpenGL Compositor, dan Sistem Monetisasi Langganan SaaS (Harian, Mingguan, Bulanan)**.
-
----
-
-## Skema Monetisasi SaaS & Fitur Eksklusif Pro
-
-| Fitur & Kapabilitas | Starter Gratis (`Rp 0`) | Pass Harian (`Rp 5.000 / 24 Jam`) | Creator Mingguan (`Rp 19.000 / 7 Hari`) | Studio Pro VIP (`Rp 59.000 / 30 Hari`) |
-| :--- | :---: | :---: | :---: | :---: |
-| Resolusi & Codec Maksimal | 720p60 H.264 | **1080p60 + H.265 (HEVC)** | **1080p60 + H.265 (HEVC)** | **1080p60 + H.265 (HEVC)** |
-| Hapus Watermark (Clean Feed) | Tidak | **Ya (100% Bersih)** | **Ya (100% Bersih)** | **Ya (100% Bersih)** |
-| SoundFX Audio Deck 48kHz PCM | 4 Pad Dasar | **8 Pad Penuh** | **8 Pad Penuh** | **8 Pad Penuh** |
-| Hot-Swap Scene & Subathon Timer | 3 Scene | **5 Scene Penuh + Subathon** | **5 Scene Penuh + Subathon** | **5 Scene Penuh + Subathon** |
-| **Cloud Multi-Stream Simulcast Relay** | 1 Platform | 1 Platform | **3 Platform Serentak (Hemat Kuota 66%)** | **3 Platform Serentak (Hemat Kuota 66%)** |
-| **Instant Replay Clip 30 Detik** | Tidak | Tidak | **Ya** | **Ya** |
-| **Teks Kustom Bebas & Tema Royal Gold VIP** | Maks 1 Teks | Maks 3 Teks | **Tanpa Batas + Tema VIP** | **Tanpa Batas + Tema VIP** |
-| **Smart TTS Pembaca Suara Donasi/Gift** | Tidak | Tidak | Tidak | **Otomatis Bahasa Indonesia** |
-| **Cloud Anti-Disconnect Shield (60s)** | Tidak | Tidak | Tidak | **Server Standby Anti-Putus Room** |
-| **Analitik Real-Time & Estimasi Rupiah** | Dasar | Dasar | **Aktif** | **Lengkap** |
+- **Live Production Cloud & Interactive Web Studio:** [https://distream-studio-cloud.vercel.app](https://distream-studio-cloud.vercel.app)
+- **GitHub Pages Mirror:** [https://xykal.github.io/distream-studio/](https://xykal.github.io/distream-studio/)
+- **Signed Android Release APK (`v4.0.0`):** Tersedia langsung pada tab [GitHub Releases (`v4.0.0`)](https://github.com/xykal/distream-studio/releases/tag/v4.0.0)
 
 ---
 
-## Arsitektur Teknis Utama
+## Pembaruan Utama v4.0.0 (Real Production Edition)
 
-1. **UI/UX Creator Ergonomis (Dual Theme: *Studio Dark* & *Clean Light*)**
-   - Identitas visual modern non-cyber dengan logo vektor geometris `DiStream`, transisi pegas halus, serta in-game floating control bar ber-drawer cepat SoundFX.
-2. **Cryptographic SaaS Licensing & Pakasir QRIS Payment Gateway (`saasEngine.js` & `SaasSubscriptionManager.kt`)**
-   - Integrasi langsung API **Pakasir QRIS** (`POST /api/transactioncreate/qris` & verifikasi server-ke-server `GET /api/transactiondetail`), dukungan kode voucher (`XYKAL50`, `HEMAT20`, `TRIALVIP`), bukti email otomatis via **Resend API**, serta token lisensi bertanda tangan **`HMAC-SHA256` (`DST1.<payload>.<signature>`)** yang terikat pada `Device ID` dan disimpan terenkripsi di Android Hardware Keystore.
-3. **3-Bus Real-Time PCM Audio Mixer (`SoundFxSynthesizer.kt` & `ProBroadcastDspEffect.kt`)**
-   - Menggabungkan vokal mikrofon (Noise Gate `-42 dBFS` + Auto Voice Ducking), audio internal game, efek SoundFX Deck, dan Sensor Kata Kasar `1kHz` langsung ke stream RTMP/RTMPS.
-4. **Keamanan Berlapis (`StreamKeyVault.kt` & `network_security_config.xml`)**
-   - Enkripsi hardware `AES-256-GCM`, proteksi layar aplikasi `FLAG_SECURE`, kunci PIN sebelum menghentikan live, Tombol Panik (*Privacy Slate + Mute*), auto-wipe Stream Key, pengingat mode DND, serta sensor kata terlarang otomatis pada komentar dan donasi Saweria.
+1. **100% Antarmuka Studio Kustom Non-Material (`ui/DiStreamCustomUi.kt`)**:
+   - Seluruh komponen UI dirancang murni dari nol menggunakan primitif kanvas, vektor geometris, fader taktil studio, dan animasi pegas (*spring physics*) tanpa widget stok Android / Material3 bawaan.
+   - Mendukung 3 skema warna kreator bersih: **Studio Dark**, **Daylight Clean**, dan **Royal Gold VIP**.
+2. **Kanvas Preview Live WYSIWYG Interaktif (`ui/LiveCanvasEditor.kt`)**:
+   - **Feed Kamera Hardware Asli (`CameraX PreviewView`)** langsung menyala di panggung utama maupun kotak Facecam PiP (Lensa Depan/Belakang + Mirror).
+   - **Ganti Orientasi Instan**: `9:16 TikTok Potret (1080x1920)`, `16:9 Lanskap Game/YouTube (1920x1080)`, `4:5 Feed Kreator (1080x1350)`, dan `1:1 Kotak Studio (1080x1080)` lengkap dengan panduan **Safe Zone TikTok LIVE** serta **Grid 3x3**.
+   - **Drag, Resize & Edit Langsung di Layar**: Sentuh dan geser bebas posisi widget `Target Gift`, `Tap-Tap Love`, `Subathon Timer`, `Facecam PiP`, `Running Text`, maupun layer teks kustom langsung di atas kanvas preview, lalu koordinat persisnya ikut tersinkron ke encoder video RTMP/RTMPS.
+3. **Mode Uji Kapsul Melayang Mandiri ("Tes Melayang" — `overlay/FloatingHudManager.kt`)**:
+   - Uji dan jalankan kapsul kontrol melayang (`TYPE_APPLICATION_OVERLAY`) kapan saja di atas game atau aplikasi lain **tanpa harus memulai stream RTMP terlebih dahulu**.
+   - Fitur kapsul melayang: *free-drag*, mengecil otomatis menjadi gelembung tepi layar (`DS LIVE`), pengatur transparansi (`96% / 78% / 58%`), ukuran Facecam PiP (`S / M / L`), ganti Scene cepat, pad SoundFX, tombol tahan sensor 1kHz, serta Layar Privasi Anti-OTP.
+4. **Checkout Pembayaran Cloud Asli via Pakasir API v2 (`https://distream-studio-cloud.vercel.app`)**:
+   - Terintegrasi langsung ke endpoint produksi **Pakasir API v2** (`/api/v2/create-transaction/{slug}/{order_id}` dan `/api/v2/transaction-status/{slug}/{txn_id}`), merender matriks **QR Code Scannable ISO/IEC 18004 (ZXing & PNG)** langsung di dalam aplikasi, auto-polling status lunas setiap 4.5 detik, penerbitan token lisensi kriptografis **HMAC-SHA256 (`DS1.*`)**, dan pengiriman email otomatis melalui **Resend API**.
+5. **Mesin Audio DSP 48kHz & Monitoring Lokal Langsung**:
+   - Pad SoundFX (`Tepuk Tangan`, `Hype Horn`, `Koin Masuk`, `Victory`, `Rimshot`, `Bass Drop`), nada sensor **1kHz Censor Beep**, serta pembaca donasi **Smart Indonesian TTS (`id-ID`)** dapat didengar langsung melalui speaker HP saat pratinjau maupun tercampur mulus ke jalur audio stream (`MixAudioSource`).
 
 ---
 
-## Menjalankan Backend & Automated QA Test Suite
+## Struktur Proyek
 
-```bash
-cd distream-backend
-cp ../.env.example .env
-npm install
-npm test
-npm start
-```
-
-## Build APK Android Lokal atau via GitHub Actions
-
-```bash
-./gradlew testDebugUnitTest lintDebug assembleDebug assembleRelease
-```
-
-Setiap push ke branch `main` otomatis menjalankan pipeline **GitHub Actions CI/CD** untuk mengaudit keamanan `.env`, menguji backend SaaS & WebSocket, menjalankan JUnit 4 Unit Tests & Android Lint, serta menandatangani dan mempublikasikan file **`DiStreamStudio-v3.0.0-release-signed.apk`** ke halaman **GitHub Releases**.
+- `app/` — Aplikasi Android Native Kotlin (`compileSdk = 36`, `minSdk = 29`, `RootEncoder 2.8.1`, `CameraX`, `ZXing 3.5.3`, Custom Studio UI).
+- `distream-backend/` — Server Cloud Produksi Node.js & Vercel Serverless Function (Pakasir API v2 QRIS, HMAC-SHA256 License Signer, Resend Email Delivery, TikTok LIVE + Saweria Real-Time Event Bus).
+- `docs/index.html` — Aplikasi Web Studio Interaktif 3-Kolom (Webcam/Screen Capture Asli, Drag & Resize Canvas, Kapsul Melayang + Browser Picture-in-Picture, Rekaman Lokal WebM, & Live QRIS Pakasir v2).
+- `.github/workflows/ci-build-qa.yml` — Pipeline QA Otomatis GitHub Actions (Backend Test Suite, JUnit 4 Comprehensive Suite, Android Lint, R8 Release Build, APK v2/v3 Signing & GitHub Release).

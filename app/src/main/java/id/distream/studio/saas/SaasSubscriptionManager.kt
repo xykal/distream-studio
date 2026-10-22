@@ -1,5 +1,11 @@
 package id.distream.studio.saas
 
+import android.graphics.Bitmap
+import android.graphics.Color
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.common.BitMatrix
+import com.google.zxing.qrcode.QRCodeWriter
 import id.distream.studio.model.SaasPlanTier
 import id.distream.studio.model.StreamSettings
 import okhttp3.MediaType.Companion.toMediaType
@@ -8,6 +14,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
+import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.Base64
@@ -17,6 +24,8 @@ import javax.crypto.spec.SecretKeySpec
 
 data class SaasCheckoutOrder(
     val orderId: String,
+    val txnId: String = "",
+    val orderToken: String = "",
     val planTier: SaasPlanTier,
     val basePriceIdr: Int,
     val discountPercent: Int,
@@ -26,6 +35,8 @@ data class SaasCheckoutOrder(
     val qrisPayload: String,
     val hostedPaymentUrl: String,
     val status: String,
+    val gatewayLive: Boolean = true,
+    val isSandbox: Boolean = false,
     val licenseToken: String = "",
     val expiresAtMillis: Long = 0L
 )
@@ -39,23 +50,64 @@ data class DecodedLicenseResult(
 )
 
 /**
- * Mesin Manajemen Langganan SaaS DiStream Studio (Harian, Mingguan, Bulanan & Gratis).
- *
- * Fitur:
- * - Verifikasi kriptografi HMAC-SHA256 (`DST1.<base64urlPayload>.<hmacSignature>`) anti-manipulasi
- * - Pengikatan Device ID (Anti-Sharing Lisensi) & auto-downgrade saat masa aktif habis
- * - Perhitungan Kode Voucher (`XYKAL50`, `HEMAT20`, `TRIALVIP`)
- * - Integrasi Checkout QRIS Pakasir via `distream-backend` + fallback mode offline/sandbox
+ * Mesin Manajemen Langganan SaaS DiStream Studio v4.0 (Real Pakasir API v2 + ZXing QR Matrix).
  */
 object SaasSubscriptionManager {
 
+    const val PRODUCTION_CLOUD_URL = "https://distream-studio-cloud.vercel.app"
     private const val DEFAULT_SIGNING_SECRET = "distream-studio-default-hmac-key-2026"
     private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
 
     private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(8, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(12, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
         .build()
+
+    fun normalizeCloudUrl(raw: String): String {
+        val trimmed = raw.trim().trimEnd('/')
+        if (
+            trimmed.isBlank() ||
+            trimmed.contains("localhost") ||
+            trimmed.contains("127.0.0.1") ||
+            trimmed.contains("10.0.2.2")
+        ) {
+            return PRODUCTION_CLOUD_URL
+        }
+        return trimmed
+    }
+
+    /**
+     * Menghasilkan matriks QR Code ISO/IEC 18004 asli (pure JVM, dapat diuji unit test tanpa Android OS).
+     */
+    fun encodeQrBitMatrix(payload: String, sizePx: Int = 512): BitMatrix {
+        val hints = mapOf(
+            EncodeHintType.MARGIN to 1,
+            EncodeHintType.CHARACTER_SET to "UTF-8"
+        )
+        return QRCodeWriter().encode(
+            payload.ifBlank { PRODUCTION_CLOUD_URL },
+            BarcodeFormat.QR_CODE,
+            sizePx,
+            sizePx,
+            hints
+        )
+    }
+
+    fun generateQrBitmap(payload: String, sizePx: Int = 512): Bitmap? = runCatching {
+        val matrix = encodeQrBitMatrix(payload, sizePx)
+        val w = matrix.width
+        val h = matrix.height
+        val pixels = IntArray(w * h)
+        for (y in 0 until h) {
+            val rowOffset = y * w
+            for (x in 0 until w) {
+                pixels[rowOffset + x] = if (matrix.get(x, y)) Color.BLACK else Color.WHITE
+            }
+        }
+        Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).apply {
+            setPixels(pixels, 0, w, 0, 0, w, h)
+        }
+    }.getOrNull()
 
     fun resolveActiveTier(
         settings: StreamSettings,
@@ -169,6 +221,7 @@ object SaasSubscriptionManager {
         promoCode: String,
         email: String
     ): SaasCheckoutOrder {
+        val cloudBase = normalizeCloudUrl(backendBaseUrl)
         val bodyJson = JSONObject().apply {
             put("planId", tier.name)
             put("deviceId", deviceId)
@@ -178,7 +231,7 @@ object SaasSubscriptionManager {
 
         val remoteOrder = runCatching {
             val req = Request.Builder()
-                .url("${backendBaseUrl.trimEnd('/')}/api/saas/checkout")
+                .url("$cloudBase/api/saas/checkout")
                 .post(bodyJson.toRequestBody(JSON_MEDIA))
                 .build()
             httpClient.newCall(req).execute().use { resp ->
@@ -186,6 +239,8 @@ object SaasSubscriptionManager {
                 val o = JSONObject(resp.body?.string().orEmpty()).getJSONObject("order")
                 SaasCheckoutOrder(
                     orderId = o.getString("orderId"),
+                    txnId = o.optString("txnId", ""),
+                    orderToken = o.optString("orderToken", ""),
                     planTier = runCatching { SaasPlanTier.valueOf(o.getString("planId")) }.getOrDefault(tier),
                     basePriceIdr = o.optInt("baseAmount", tier.priceIdr),
                     discountPercent = o.optInt("discountPercent", 0),
@@ -195,6 +250,8 @@ object SaasSubscriptionManager {
                     qrisPayload = o.optString("qrisString", ""),
                     hostedPaymentUrl = o.optString("paymentUrl", ""),
                     status = o.optString("status", "pending"),
+                    gatewayLive = o.optBoolean("gatewayLive", true),
+                    isSandbox = o.optBoolean("isSandbox", false),
                     licenseToken = o.optString("licenseToken", ""),
                     expiresAtMillis = o.optLong("expiresAt", 0L)
                 )
@@ -203,7 +260,6 @@ object SaasSubscriptionManager {
 
         if (remoteOrder != null) return remoteOrder
 
-        // Fallback offline/sandbox apabila server lokal belum dinyalakan
         val (effectiveTier, discPct, amount) = calculatePromoPricing(tier, promoCode)
         val orderId = "DST-${effectiveTier.name}-${System.currentTimeMillis() % 1_000_000}"
         if (amount == 0) {
@@ -219,11 +275,13 @@ object SaasSubscriptionManager {
                 qrisPayload = "",
                 hostedPaymentUrl = "",
                 status = "completed",
+                gatewayLive = false,
                 licenseToken = tok,
                 expiresAtMillis = exp
             )
         }
         val fee = (amount * 0.007f).toInt() + 310
+        val fallbackUrl = "https://app.pakasir.com/pay/distream/$amount?order_id=$orderId&qris_only=1"
         return SaasCheckoutOrder(
             orderId = orderId,
             planTier = effectiveTier,
@@ -232,10 +290,34 @@ object SaasSubscriptionManager {
             finalAmountIdr = amount,
             feeIdr = fee,
             totalPaymentIdr = amount + fee,
-            qrisPayload = "00020101021226660014ID.CO.DISTREAM.WWW011893600914${orderId.takeLast(10)}5303360540${amount}5802ID",
-            hostedPaymentUrl = "https://app.pakasir.com/pay/distream/$amount?order_id=$orderId&qris_only=1",
-            status = "pending"
+            qrisPayload = fallbackUrl,
+            hostedPaymentUrl = fallbackUrl,
+            status = "pending",
+            gatewayLive = false
         )
+    }
+
+    fun pollOrderStatus(
+        backendBaseUrl: String,
+        pendingOrder: SaasCheckoutOrder
+    ): SaasCheckoutOrder {
+        val cloudBase = normalizeCloudUrl(backendBaseUrl)
+        return runCatching {
+            val encodedToken = URLEncoder.encode(pendingOrder.orderToken, "UTF-8")
+            val req = Request.Builder()
+                .url("$cloudBase/api/saas/order/${pendingOrder.orderId}?orderToken=$encodedToken")
+                .get()
+                .build()
+            httpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@use pendingOrder
+                val o = JSONObject(resp.body?.string().orEmpty()).getJSONObject("order")
+                pendingOrder.copy(
+                    status = o.optString("status", pendingOrder.status),
+                    licenseToken = o.optString("licenseToken", pendingOrder.licenseToken),
+                    expiresAtMillis = o.optLong("expiresAt", pendingOrder.expiresAtMillis)
+                )
+            }
+        }.getOrDefault(pendingOrder)
     }
 
     fun confirmOrderSettlement(
@@ -243,10 +325,15 @@ object SaasSubscriptionManager {
         pendingOrder: SaasCheckoutOrder,
         deviceId: String
     ): SaasCheckoutOrder {
+        val cloudBase = normalizeCloudUrl(backendBaseUrl)
         val remoteSettled = runCatching {
-            val body = JSONObject().put("orderId", pendingOrder.orderId).toString()
+            val body = JSONObject().apply {
+                put("orderId", pendingOrder.orderId)
+                put("txnId", pendingOrder.txnId)
+                put("orderToken", pendingOrder.orderToken)
+            }.toString()
             val req = Request.Builder()
-                .url("${backendBaseUrl.trimEnd('/')}/api/saas/sandbox/complete")
+                .url("$cloudBase/api/saas/pakasir/pay-sandbox")
                 .post(body.toRequestBody(JSON_MEDIA))
                 .build()
             httpClient.newCall(req).execute().use { resp ->
@@ -275,6 +362,7 @@ object SaasSubscriptionManager {
         settings: StreamSettings,
         deviceId: String
     ): String? {
+        val cloudBase = normalizeCloudUrl(backendBaseUrl)
         val targets = JSONArray().apply {
             if (settings.streamKey.isNotBlank()) {
                 put(JSONObject().put("platform", "Primary").put("url", settings.buildFullEndpoint()))
@@ -295,7 +383,7 @@ object SaasSubscriptionManager {
                 put("targets", targets)
             }.toString()
             val req = Request.Builder()
-                .url("${backendBaseUrl.trimEnd('/')}/api/saas/simulcast/configure")
+                .url("$cloudBase/api/saas/simulcast/configure")
                 .post(payload.toRequestBody(JSON_MEDIA))
                 .build()
             httpClient.newCall(req).execute().use { resp ->

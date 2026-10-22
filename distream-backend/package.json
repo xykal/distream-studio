@@ -8,6 +8,7 @@
     "test": "node --test test/saas_and_server.test.js"
   },
   "dependencies": {
+    "qrcode": "^1.5.4",
     "tiktok-live-connector": "^2.5.0",
     "ws": "^8.22.0"
   }

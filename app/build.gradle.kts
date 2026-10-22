@@ -12,8 +12,8 @@ android {
         applicationId = "id.distream.studio"
         minSdk = 29
         targetSdk = 35
-        versionCode = 3
-        versionName = "3.0.0"
+        versionCode = 4
+        versionName = "4.0.0"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -88,6 +88,7 @@ dependencies {
     implementation("com.google.guava:guava:32.1.3-android")
 
     implementation(libs.okhttp)
+    implementation(libs.zxing.core)
 
     implementation(libs.rootencoder.library)
     implementation(libs.rootencoder.extra.sources)

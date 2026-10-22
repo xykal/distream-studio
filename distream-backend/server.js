@@ -1,24 +1,11 @@
 /**
- * DiStream Studio Backend Server v3.0 (Event Bus + SaaS Subscription Billing + Cloud Pro Services)
- *
- * Endpoint Utama:
- * - GET  /api/health                        -> Status server & metrik sesi
- * - GET  /api/saas/plans                    -> Katalog harga Harian, Mingguan, Bulanan & fitur eksklusif
- * - POST /api/saas/checkout                 -> Buat invoice QRIS Pakasir / Promo Trial
- * - GET  /api/saas/order/:orderId           -> Cek status pembayaran & ambil Signed License Token
- * - POST /api/saas/webhook/pakasir          -> Webhook penyelesaian pembayaran QRIS Pakasir (idempoten)
- * - POST /api/saas/sandbox/complete         -> Simulasi lunas instan saat mode sandbox/dev
- * - POST /api/saas/license/verify           -> Validasi kriptografi HMAC-SHA256 & Device ID
- * - POST /api/saas/simulcast/configure      -> [Pro Mingguan/Bulanan] Cloud Multi-Stream Relay 3 Platform
- * - POST /api/saas/failover/arm             -> [VIP Bulanan] Cloud Anti-Disconnect Standby Shield 60s
- * - POST /webhook/donation/:roomToken       -> Webhook Saweria / SociaBuzz + Filter Kata Kasar
- * - WS   ws://host:21213/?uniqueId=...      -> Real-time Event Bus TikTok LIVE & Donasi
+ * DiStream Studio Backend Server v4.0
+ * Real Pakasir API v2 + Stateless Cloud Licensing + Resend Email + Live WebSocket Event Bus
  */
 
+const fs = require("fs");
+const path = require("path");
 const http = require("http");
-const { WebSocketServer } = require("ws");
-const { TikTokLiveConnection, WebcastPushConnection } = require("tiktok-live-connector");
-const TikTokConnector = TikTokLiveConnection || WebcastPushConnection;
 const { URL } = require("url");
 const { SaasBillingEngine } = require("./saasEngine");
 
@@ -37,6 +24,9 @@ function sanitizeMessage(input) {
 }
 
 function readJsonBody(req) {
+  if (req.body && typeof req.body === "object") {
+    return Promise.resolve(req.body);
+  }
   return new Promise((resolve, reject) => {
     let raw = "";
     req.on("data", (chunk) => {
@@ -45,7 +35,7 @@ function readJsonBody(req) {
     req.on("end", () => {
       try {
         resolve(JSON.parse(raw || "{}"));
-      } catch (e) {
+      } catch {
         reject(new Error("Malformed JSON payload"));
       }
     });
@@ -53,10 +43,10 @@ function readJsonBody(req) {
   });
 }
 
-function createDiStreamServer(options = {}) {
+function createDiStreamHttpHandler(options = {}) {
   const webhookSecret = options.webhookSecret ?? process.env.DISTREAM_SECRET ?? "";
   const saas = options.saasEngine || new SaasBillingEngine(options);
-  const rooms = new Map();
+  const rooms = options.rooms || new Map();
 
   function broadcastToRoom(roomToken, payload) {
     const clients = rooms.get(roomToken);
@@ -69,11 +59,10 @@ function createDiStreamServer(options = {}) {
     }
   }
 
-  const server = http.createServer(async (req, res) => {
+  async function handler(req, res) {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Stream-Token");
-    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Stream-Token, X-Secret");
 
     if (req.method === "OPTIONS") {
       res.writeHead(204);
@@ -84,16 +73,37 @@ function createDiStreamServer(options = {}) {
     const parsedUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
     const pathname = parsedUrl.pathname;
 
+    // Serve Live Interactive Web Studio at root /
+    if (req.method === "GET" && (pathname === "/" || pathname === "/index.html")) {
+      const candidates = [
+        path.resolve(__dirname, "public", "index.html"),
+        path.resolve(__dirname, "..", "docs", "index.html"),
+        path.resolve("/home/user/DiStream_Studio_Preview.html")
+      ];
+      for (const htmlPath of candidates) {
+        if (fs.existsSync(htmlPath)) {
+          res.setHeader("Content-Type", "text/html; charset=utf-8");
+          res.writeHead(200);
+          res.end(fs.readFileSync(htmlPath));
+          return;
+        }
+      }
+    }
+
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+
     try {
       if (req.method === "GET" && pathname === "/api/health") {
         res.writeHead(200);
         res.end(
           JSON.stringify({
             status: "ok",
-            service: "DiStream Studio Backend v3.0",
+            service: "DiStream Studio Cloud v4.0",
+            pakasirApiVersion: "v2",
             activeRooms: rooms.size,
             totalOrders: saas.orders.size,
-            pakasirConfigured: Boolean(saas.pakasirProject && saas.pakasirApiKey)
+            pakasirConfigured: Boolean(saas.pakasirProject && saas.pakasirApiKey),
+            resendConfigured: Boolean(saas.resendApiKey)
           })
         );
         return;
@@ -120,21 +130,32 @@ function createDiStreamServer(options = {}) {
 
       if (req.method === "GET" && pathname.startsWith("/api/saas/order/")) {
         const orderId = decodeURIComponent(pathname.replace("/api/saas/order/", ""));
-        const order = saas.orders.get(orderId);
-        if (!order) {
-          res.writeHead(404);
-          res.end(JSON.stringify({ error: "Order tidak ditemukan" }));
-          return;
-        }
+        const orderToken = parsedUrl.searchParams.get("orderToken") || null;
+        const order = await saas.syncLiveStatusWithPakasir(orderId, orderToken);
         res.writeHead(200);
         res.end(JSON.stringify({ order }));
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/api/saas/pakasir/pay-sandbox") {
+        const body = await readJsonBody(req);
+        const settled = await saas.settleOrder(body.orderId, {
+          verifyWithPakasir: Boolean(saas.pakasirProject && saas.pakasirApiKey && body.txnId),
+          orderToken: body.orderToken || null,
+          triggerPakasirSandboxApi: true
+        });
+        res.writeHead(200);
+        res.end(JSON.stringify({ settled: true, order: settled }));
         return;
       }
 
       if (req.method === "POST" && pathname === "/api/saas/webhook/pakasir") {
         const body = await readJsonBody(req);
         const orderId = body.order_id || body.orderId;
-        const settled = await saas.settleOrder(orderId, { verifyWithPakasir: true });
+        const settled = await saas.settleOrder(orderId, {
+          verifyWithPakasir: true,
+          orderToken: body.orderToken || null
+        });
         res.writeHead(200);
         res.end(JSON.stringify({ settled: true, order: settled }));
         return;
@@ -147,7 +168,10 @@ function createDiStreamServer(options = {}) {
           return;
         }
         const body = await readJsonBody(req);
-        const settled = await saas.settleOrder(body.orderId, { verifyWithPakasir: false });
+        const settled = await saas.settleOrder(body.orderId, {
+          verifyWithPakasir: false,
+          orderToken: body.orderToken || null
+        });
         res.writeHead(200);
         res.end(JSON.stringify({ settled: true, order: settled }));
         return;
@@ -213,8 +237,17 @@ function createDiStreamServer(options = {}) {
       res.writeHead(code);
       res.end(JSON.stringify({ error: err.message }));
     }
-  });
+  }
 
+  return { handler, saas, rooms, broadcastToRoom };
+}
+
+function createDiStreamServer(options = {}) {
+  const { WebSocketServer } = require("ws");
+  const { TikTokLiveConnection, WebcastPushConnection } = require("tiktok-live-connector");
+  const TikTokConnector = TikTokLiveConnection || WebcastPushConnection;
+  const { handler, saas, rooms } = createDiStreamHttpHandler(options);
+  const server = http.createServer(handler);
   const wss = new WebSocketServer({ server });
 
   wss.on("connection", (ws, req) => {
@@ -310,8 +343,8 @@ if (require.main === module) {
   const port = Number(process.env.PORT || 21213);
   const { server } = createDiStreamServer({ enableExternalGatewayCalls: true });
   server.listen(port, "0.0.0.0", () => {
-    console.log(`[DiStream Backend v3.0] Listening on http://0.0.0.0:${port}`);
+    console.log(`[DiStream Backend v4.0] Listening on http://0.0.0.0:${port}`);
   });
 }
 
-module.exports = { createDiStreamServer, sanitizeMessage };
+module.exports = { createDiStreamServer, createDiStreamHttpHandler, sanitizeMessage };

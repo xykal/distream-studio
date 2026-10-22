@@ -147,7 +147,7 @@ class DiStreamComprehensiveTest {
     }
 
     @Test
-    fun `Portrait and Landscape encoder resolution resolver computes exact dimensions`() {
+    fun `Portrait, Landscape, 4x5, and 1x1 encoder resolution resolver computes exact even dimensions`() {
         val (pw, ph) = VideoQualityPreset.FHD_1080P_60.resolveDimensions(StreamOrientation.PORTRAIT_9_16)
         assertEquals(1080, pw)
         assertEquals(1920, ph)
@@ -155,5 +155,27 @@ class DiStreamComprehensiveTest {
         val (lw, lh) = VideoQualityPreset.FHD_1080P_60.resolveDimensions(StreamOrientation.LANDSCAPE_16_9)
         assertEquals(1920, lw)
         assertEquals(1080, lh)
+
+        val (fw, fh) = VideoQualityPreset.FHD_1080P_60.resolveDimensions(StreamOrientation.CREATOR_4_5)
+        assertEquals(1080, fw)
+        assertEquals(1350, fh)
+
+        val (sw, sh) = VideoQualityPreset.FHD_1080P_60.resolveDimensions(StreamOrientation.SQUARE_1_1)
+        assertEquals(1080, sw)
+        assertEquals(1080, sh)
+    }
+
+    @Test
+    fun `ZXing ISO 18004 QR matrix generator encodes real scannable QRIS payload and Cloud URL normalizes`() {
+        assertEquals(
+            "https://distream-studio-cloud.vercel.app",
+            SaasSubscriptionManager.normalizeCloudUrl("http://localhost:21213")
+        )
+        val matrix = SaasSubscriptionManager.encodeQrBitMatrix(
+            "https://app.pakasir.com/pay-v2/gkiq8c8iq?qris_only=1",
+            256
+        )
+        assertEquals(256, matrix.width)
+        assertEquals(256, matrix.height)
     }
 }

@@ -60,8 +60,10 @@ jobs:
       - name: Setup Gradle 8.11.1 Cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Ensure Executable Gradle Wrapper
-        run: chmod +x ./gradlew
+      - name: Accept Android SDK Licenses & Ensure Gradle Wrapper Executable
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
+          chmod +x ./gradlew
 
       - name: Run JUnit 4 Comprehensive Unit Tests (SaaS, HMAC, PCM Audio DSP, Security)
         run: ./gradlew testDebugUnitTest --info --stacktrace

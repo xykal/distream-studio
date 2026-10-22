@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "id.distream.studio"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "id.distream.studio"

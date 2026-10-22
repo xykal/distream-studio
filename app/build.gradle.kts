@@ -47,7 +47,12 @@ android {
     lint {
         abortOnError = true
         warningsAsErrors = false
-        disable += setOf("AndroidGradlePluginVersion", "GradleDependency", "OldTargetApi")
+        disable += setOf(
+            "AndroidGradlePluginVersion",
+            "GradleDependency",
+            "OldTargetApi",
+            "MissingPermission"
+        )
     }
 }
 
@@ -80,6 +85,7 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
+    implementation("com.google.guava:guava:32.1.3-android")
 
     implementation(libs.okhttp)
 

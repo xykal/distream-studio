@@ -114,8 +114,9 @@ class DiStreamComprehensiveTest {
     fun `ProBroadcastDspEffect enforces noise gate, 1kHz censor tone, and SoundFX mixing cleanly`() {
         val dsp = ProBroadcastDspEffect { _, _, _ -> }
 
-        // Quiet fan hiss should be gated to pure silence
-        val quietBuffer = ByteArray(1024) { 2 }
+        // Quiet fan hiss (16-bit little-endian amplitude = 24 -> -62.7 dBFS < -42 dBFS threshold)
+        // must be cleanly zeroed out by the broadcast noise gate
+        val quietBuffer = ByteArray(1024) { idx -> if (idx % 2 == 0) 24 else 0 }
         dsp.process(quietBuffer)
         assertTrue("Noise gate must zero out low-amplitude hiss", quietBuffer.all { it.toInt() == 0 })
 

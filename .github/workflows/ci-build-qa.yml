@@ -122,16 +122,37 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="v4.0.0"
+          # Tag rilis diturunkan dari versionName di app/build.gradle.kts supaya APK tidak
+          # pernah lagi tercampur ke release versi lama seperti sebelumnya (v4.0.0 hardcoded).
+          APP_VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts | head -1)
+          TAG="v${APP_VERSION}"
+          echo "Publishing release $TAG"
+
+          NOTES=$(cat <<EOF
+          Rilis $TAG — Streaming In (DiStream Studio).
+
+          ## Hardening kritis
+          - Multistream memakai satu endpoint ingest (preset Restream); relay internal fiktif dihapus
+            sehingga siaran tidak pernah gagal connect karena URL relay yang tidak ada servernya.
+          - Lisensi fail-closed: token wajib diverifikasi, tidak ada lagi penerbitan lisensi offline.
+          - Webhook donasi: wajib token, perbandingan constant-time, validasi nominal, rate limit.
+          - FLAG_SECURE hanya pada permukaan sensitif (window aplikasi tidak lagi hitam di siaran).
+
+          ## Kompositor (beta)
+          - Overlay provider donasi dimuat sebagai WebView sendiri (bukan iframe).
+          - Opsi "Facecam Ikut Terekam ke Siaran" (beta, default mati) — butuh izin overlay.
+          EOF
+          )
+
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" \
-              release-artifacts/StreamingIn-v4.0.1-release-signed.apk \
-              release-artifacts/StreamingIn-v4.0.1-debug.apk \
+              release-artifacts/StreamingIn-v${APP_VERSION}-release-signed.apk \
+              release-artifacts/StreamingIn-v${APP_VERSION}-debug.apk \
               --clobber
           else
             gh release create "$TAG" \
-              release-artifacts/StreamingIn-v4.0.1-release-signed.apk \
-              release-artifacts/StreamingIn-v4.0.1-debug.apk \
-              --title "DiStream Studio v4.0.0 — Custom Studio UI, Live WYSIWYG Canvas, Floating HUD & Pakasir v2" \
-              --notes "Full non-Material bespoke Creator UI, interactive drag-and-resize live broadcast stage, standalone Floating HUD tester, local 48kHz audio monitoring, and live Pakasir API v2 cloud checkout."
+              release-artifacts/StreamingIn-v${APP_VERSION}-release-signed.apk \
+              release-artifacts/StreamingIn-v${APP_VERSION}-debug.apk \
+              --title "Streaming In v${APP_VERSION} — Hardening lisensi/webhook + SceneCompositor" \
+              --notes "$NOTES"
           fi

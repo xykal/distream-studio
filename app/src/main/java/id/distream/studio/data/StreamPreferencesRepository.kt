@@ -100,6 +100,7 @@ class StreamPreferencesRepository(private val appContext: Context) {
 
         val FLOATING_HUD = booleanPreferencesKey("floating_hud")
         val FLOATING_FACECAM = booleanPreferencesKey("floating_facecam")
+        val FACECAM_IN_ENCODER = booleanPreferencesKey("facecam_in_encoder")
         val FACECAM_SIZE = intPreferencesKey("facecam_size")
         val HUD_OPACITY = intPreferencesKey("hud_opacity")
 
@@ -192,6 +193,7 @@ class StreamPreferencesRepository(private val appContext: Context) {
             customTextLayers = decodeCustomTexts(prefs[Keys.CUSTOM_TEXTS_JSON]),
             floatingHudEnabled = prefs[Keys.FLOATING_HUD] ?: true,
             floatingFacecamEnabled = prefs[Keys.FLOATING_FACECAM] ?: true,
+            facecamInEncoder = prefs[Keys.FACECAM_IN_ENCODER] ?: false,
             facecamSizeIndex = prefs[Keys.FACECAM_SIZE] ?: 1,
             hudOpacityPercent = prefs[Keys.HUD_OPACITY] ?: 92,
             audioMode = enumOrDefault(prefs[Keys.AUDIO_MODE], AudioCaptureMode.MIX_GAME_AND_MIC),
@@ -272,6 +274,7 @@ class StreamPreferencesRepository(private val appContext: Context) {
             prefs[Keys.CUSTOM_TEXTS_JSON] = encodeCustomTexts(s.customTextLayers)
             prefs[Keys.FLOATING_HUD] = s.floatingHudEnabled
             prefs[Keys.FLOATING_FACECAM] = s.floatingFacecamEnabled
+            prefs[Keys.FACECAM_IN_ENCODER] = s.facecamInEncoder
             prefs[Keys.FACECAM_SIZE] = s.facecamSizeIndex
             prefs[Keys.HUD_OPACITY] = s.hudOpacityPercent
             prefs[Keys.AUDIO_MODE] = s.audioMode.name

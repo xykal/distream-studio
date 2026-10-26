@@ -27,6 +27,25 @@
 
 ---
 
+## Pembaruan v4.0.1 (Sprint 2 — Kompositor & Overlay Provider)
+
+1. **Overlay provider donasi dimuat sebagai WebView sendiri (`graphics/SceneCompositor.kt`)**
+   - Halaman overlay Saweria / Sociabuzz / BagiBagi sekarang dibuka lewat `loadUrl()` langsung,
+     bukan `<iframe>` di dalam HTML base URL fiktif. Penyebab overlay tampil kosong sebelumnya
+     adalah `X-Frame-Options` / CSP dari halaman provider.
+   - Audio dari halaman overlay selalu dimatikan; suara alert tetap keluar lewat jalur DSP
+     (`ProBroadcastDspEffect`) agar benar-benar terdengar penonton di RTMP.
+
+2. **Facecam ikut terekam ke siaran — BETA (`facecamInEncoder`, default MATI)**
+   - Aktifkan toggle **"Facecam Ikut Terekam ke Siaran (Beta)"** di tab Facecam & Event.
+   - Kamera dipindah ke dalam pohon View kompositor (CameraX `PreviewView` mode COMPATIBLE),
+     sehingga posisi/ukuran kotak facecam di kanvas benar-benar ikut ke encoder — sekaligus
+     menghapus dua pipeline kamera yang dulu memicu `Camera in use`.
+   - Butuh izin **"Gambar di atas aplikasi lain"** (jendela overlay offscreen diperlukan agar
+     TextureView kamera menerima frame). Bila izin belum ada, aplikasi otomatis jatuh kembali ke
+     `Camera2Source` dan scene IRL tidak pernah menjadi layar hitam.
+   - Wajib diuji di perangkat fisik sebelum dijadikan default.
+
 ## Struktur Proyek
 
 - `app/` — Aplikasi Android Native Kotlin (`compileSdk = 36`, `minSdk = 29`, `RootEncoder 2.8.1`, `CameraX`, `ZXing 3.5.3`, Custom Studio UI).

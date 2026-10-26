@@ -878,6 +878,23 @@ private fun FloatingAndLiveEventDeck(
             onCheckedChange = { v -> onUpdateSettings { it.copy(floatingFacecamEnabled = v) } }
         )
 
+        Spacer(Modifier.height(10.dp))
+        DsToggle(
+            title = "Facecam Ikut Terekam ke Siaran (Beta)",
+            subtitle = "Kamera dikomposisikan di dalam encoder, jadi kotak facecam yang kamu geser di kanvas benar-benar tampil untuk penonton. Butuh izin 'Gambar di atas aplikasi lain'. Uji dulu sebelum live beneran.",
+            checked = settings.facecamInEncoder,
+            badge = "BETA",
+            onCheckedChange = { v -> onUpdateSettings { it.copy(facecamInEncoder = v) } }
+        )
+        if (settings.facecamInEncoder) {
+            Spacer(Modifier.height(4.dp))
+            DsText(
+                text = "Kalau layar siaran jadi hitam atau facecam beku: matikan opsi ini, pastikan izin overlay aktif, lalu mulai ulang siaran.",
+                size = 10.5.sp,
+                color = p.warnAmber
+            )
+        }
+
         Spacer(Modifier.height(12.dp))
         DsText("Tes Alert Donasi, Suara Pintar TTS & Rekaman", size = 12.sp, weight = FontWeight.Bold, color = p.textSecondary)
         Spacer(Modifier.height(6.dp))

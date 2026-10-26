@@ -1,7 +1,15 @@
 const { describe, it, before, after } = require("node:test");
 const assert = require("node:assert/strict");
 const WebSocket = require("ws");
-const { createDiStreamServer, sanitizeMessage } = require("../server");
+const http = require("http");
+const {
+  createDiStreamServer,
+  createDiStreamHttpHandler,
+  sanitizeMessage,
+  parseDonationAmount,
+  safeEqual,
+  MAX_DONATION_AMOUNT
+} = require("../server");
 
 describe("DiStream Studio v3.0 — Backend SaaS, Security & Event Bus QA Suite", () => {
   let server;
@@ -11,6 +19,7 @@ describe("DiStream Studio v3.0 — Backend SaaS, Security & Event Bus QA Suite",
   before(async () => {
     const app = createDiStreamServer({
       signingSecret: "qa-test-hmac-secret-2026",
+      allowInsecureDefaultSecret: true,
       webhookSecret: "qa-webhook-token",
       sandboxMode: true,
       enableExternalGatewayCalls: false,
@@ -125,7 +134,7 @@ describe("DiStream Studio v3.0 — Backend SaaS, Security & Event Bus QA Suite",
     assert.equal(tamperCheck.status, 401);
   });
 
-  it("4. TRIALVIP grants 24-hour VIP access once per device and blocks duplicate abuse", async () => {
+  it("4. TRIALVIP grants 24-hour VIP access once per device, blocks duplicate abuse, and refuses fake relay ingest", async () => {
     const first = await fetch(`${baseUrl}/api/saas/checkout`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -156,9 +165,11 @@ describe("DiStream Studio v3.0 — Backend SaaS, Security & Event Bus QA Suite",
         ]
       })
     });
-    assert.equal(simRes.status, 200);
+    // Cloud relay ingest belum ada produksinya -> API harus jujur menolak (501),
+    // bukan mengembalikan URL relay palsu yang membuat siaran gagal connect.
+    assert.equal(simRes.status, 501);
     const simJson = await simRes.json();
-    assert.equal(simJson.relay.bandwidthSavedPercent, 50);
+    assert.match(simJson.error, /relay ingest belum tersedia/i);
 
     const shieldRes = await fetch(`${baseUrl}/api/saas/failover/arm`, {
       method: "POST",
@@ -211,5 +222,88 @@ describe("DiStream Studio v3.0 — Backend SaaS, Security & Event Bus QA Suite",
     assert.equal(eventPayload.data.message, "Gas mabar tanpa *** dan ***!");
     assert.equal(eventPayload.data.subathonAddSeconds, 300);
     assert.equal(sanitizeMessage("zeus88 anjing"), "*** ***");
+  });
+
+  it("6. Donation webhook rejects invalid/oversized amounts and enforces per-room rate limit", async () => {
+    const authHeaders = {
+      "Content-Type": "application/json",
+      "X-Stream-Token": "qa-webhook-token"
+    };
+
+    const negative = await fetch(`${baseUrl}/webhook/donation/mabar99`, {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ donator_name: "Bad", amount: -5000 })
+    });
+    assert.equal(negative.status, 400);
+
+    const insane = await fetch(`${baseUrl}/webhook/donation/mabar99`, {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ donator_name: "Bad", amount: 9_999_999_999 })
+    });
+    assert.equal(insane.status, 400);
+
+    const garbage = await fetch(`${baseUrl}/webhook/donation/mabar99`, {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ donator_name: "Bad", amount: "abc" })
+    });
+    assert.equal(garbage.status, 400);
+
+    // Normalisasi format Rupiah tetap diterima
+    const rupiah = await fetch(`${baseUrl}/webhook/donation/mabar99`, {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ donator_name: "Sultan", amount: "Rp 25.000" })
+    });
+    assert.equal(rupiah.status, 200);
+
+    // Rate limit per room: 60 event / menit
+    let lastStatus = 200;
+    for (let i = 0; i < 65; i += 1) {
+      const res = await fetch(`${baseUrl}/webhook/donation/ratelimit-room`, {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({ donator_name: `Flood${i}`, amount: 10000 })
+      });
+      lastStatus = res.status;
+    }
+    assert.equal(lastStatus, 429);
+  });
+
+  it("7. Webhook is fail-closed when no secret is configured", async () => {
+    const { handler } = createDiStreamHttpHandler({
+      signingSecret: "qa-test-hmac-secret-2026",
+      allowInsecureDefaultSecret: true,
+      webhookSecret: "",
+      connectTikTok: false
+    });
+    const naked = http.createServer(handler);
+    await new Promise((resolve) => naked.listen(0, "127.0.0.1", resolve));
+    const nakedUrl = `http://127.0.0.1:${naked.address().port}`;
+    try {
+      const res = await fetch(`${nakedUrl}/webhook/donation/room1`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Stream-Token": "" },
+        body: JSON.stringify({ donator_name: "Fake", amount: 50000 })
+      });
+      assert.equal(res.status, 503);
+    } finally {
+      await new Promise((resolve) => naked.close(resolve));
+    }
+  });
+
+  it("8. parseDonationAmount only accepts sane positive integers", () => {
+    assert.equal(parseDonationAmount("Rp 50.000"), 50000);
+    assert.equal(parseDonationAmount(25000), 25000);
+    assert.equal(parseDonationAmount("0"), null);
+    assert.equal(parseDonationAmount(-1), null);
+    assert.equal(parseDonationAmount("abc"), null);
+    assert.equal(parseDonationAmount(Number.NaN), null);
+    assert.equal(parseDonationAmount(MAX_DONATION_AMOUNT + 1), null);
+    assert.equal(safeEqual("abc", "abc"), true);
+    assert.equal(safeEqual("abc", "abd"), false);
+    assert.equal(safeEqual("abc", "abcd"), false);
   });
 });

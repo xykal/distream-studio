@@ -109,22 +109,25 @@ object SaasSubscriptionManager {
         }
     }.getOrNull()
 
+    /**
+     * FAIL-CLOSED: tier hanya dianggap aktif kalau ADA token lisensi yang lolos verifikasi
+     * tanda tangan + belum kedaluwarsa. Nilai `settings.saasTier` mentah tidak pernah dipercaya
+     * lagi, karena field itu tersimpan di DataStore dan bisa diubah manual di perangkat root.
+     */
     fun resolveActiveTier(
         settings: StreamSettings,
         nowMillis: Long = System.currentTimeMillis()
     ): SaasPlanTier {
         if (settings.saasTier == SaasPlanTier.FREE) return SaasPlanTier.FREE
         if (settings.saasExpiresAtMillis <= nowMillis) return SaasPlanTier.FREE
-        if (settings.saasLicenseToken.isNotBlank()) {
-            val verified = verifySignedToken(
-                token = settings.saasLicenseToken,
-                expectedDeviceId = null,
-                nowMillis = nowMillis
-            )
-            if (!verified.valid) return SaasPlanTier.FREE
-            return verified.tier
-        }
-        return settings.saasTier
+        if (settings.saasLicenseToken.isBlank()) return SaasPlanTier.FREE
+
+        val verified = verifySignedToken(
+            token = settings.saasLicenseToken,
+            expectedDeviceId = null,
+            nowMillis = nowMillis
+        )
+        return if (verified.valid) verified.tier else SaasPlanTier.FREE
     }
 
     fun calculatePromoPricing(tier: SaasPlanTier, promoCode: String): Triple<SaasPlanTier, Int, Int> {
@@ -136,6 +139,12 @@ object SaasSubscriptionManager {
         }
     }
 
+    /**
+     * ⚠️ HANYA UNTUK UNIT TEST / FIXTURE. Jangan pernah memanggil ini di alur runtime aplikasi.
+     * Lisensi yang berlaku harus diterbitkan oleh backend (saasEngine.issueLicense) setelah
+     * pembayaran terverifikasi. Sebelumnya fungsi ini dipakai sebagai fallback offline dan
+     * membuat paket VIP bisa didapat gratis.
+     */
     fun signLocalLicenseToken(
         tier: SaasPlanTier,
         deviceId: String,
@@ -263,7 +272,8 @@ object SaasSubscriptionManager {
         val (effectiveTier, discPct, amount) = calculatePromoPricing(tier, promoCode)
         val orderId = "DST-${effectiveTier.name}-${System.currentTimeMillis() % 1_000_000}"
         if (amount == 0) {
-            val (tok, exp) = signLocalLicenseToken(effectiveTier, deviceId, durationHoursOverride = 24)
+            // Promo 100% (TRIALVIP) WAJIB diterbitkan server agar kuota "sekali per perangkat"
+            // benar-benar ditegakkan. Tanpa server: tetap pending, bukan lisensi gratis lokal.
             return SaasCheckoutOrder(
                 orderId = orderId,
                 planTier = effectiveTier,
@@ -274,10 +284,8 @@ object SaasSubscriptionManager {
                 totalPaymentIdr = 0,
                 qrisPayload = "",
                 hostedPaymentUrl = "",
-                status = "completed",
-                gatewayLive = false,
-                licenseToken = tok,
-                expiresAtMillis = exp
+                status = "pending",
+                gatewayLive = false
             )
         }
         val fee = (amount * 0.007f).toInt() + 310
@@ -349,50 +357,10 @@ object SaasSubscriptionManager {
 
         if (remoteSettled != null) return remoteSettled
 
-        val (localToken, exp) = signLocalLicenseToken(pendingOrder.planTier, deviceId)
-        return pendingOrder.copy(
-            status = "completed",
-            licenseToken = localToken,
-            expiresAtMillis = exp
-        )
-    }
-
-    fun requestSimulcastIngestUrl(
-        backendBaseUrl: String,
-        settings: StreamSettings,
-        deviceId: String
-    ): String? {
-        val cloudBase = normalizeCloudUrl(backendBaseUrl)
-        val targets = JSONArray().apply {
-            if (settings.streamKey.isNotBlank()) {
-                put(JSONObject().put("platform", "Primary").put("url", settings.buildFullEndpoint()))
-            }
-            if (settings.simulcastYoutubeKey.isNotBlank()) {
-                put(JSONObject().put("platform", "YouTube").put("url", "rtmps://a.rtmps.youtube.com/live2/${settings.simulcastYoutubeKey.trim()}"))
-            }
-            if (settings.simulcastTwitchKey.isNotBlank()) {
-                put(JSONObject().put("platform", "Twitch").put("url", "rtmps://sin01.contribute.live-video.net/app/${settings.simulcastTwitchKey.trim()}"))
-            }
-        }
-        if (targets.length() <= 1) return null
-
-        return runCatching {
-            val payload = JSONObject().apply {
-                put("licenseToken", settings.saasLicenseToken)
-                put("deviceId", deviceId)
-                put("targets", targets)
-            }.toString()
-            val req = Request.Builder()
-                .url("$cloudBase/api/saas/simulcast/configure")
-                .post(payload.toRequestBody(JSON_MEDIA))
-                .build()
-            httpClient.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) return@use null
-                JSONObject(resp.body?.string().orEmpty())
-                    .getJSONObject("relay")
-                    .getString("relayIngestUrl")
-            }
-        }.getOrNull()
+        // PENTING: JANGAN pernah menerbitkan lisensi sendiri saat server tidak terjangkau.
+        // Versi sebelumnya menandatangani token lokal sebagai "fallback offline", sehingga siapa pun
+        // bisa mendapat VIP gratis dengan mengaktifkan mode pesawat. Sekarang: tetap pending.
+        return pendingOrder.copy(status = "pending")
     }
 
     private fun computeHmacBase64Url(input: String, secret: String): String {

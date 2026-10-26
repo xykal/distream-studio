@@ -179,6 +179,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 applyActivatedLicense(settled.planTier, settled.licenseToken, settled.expiresAtMillis)
                 _pendingOrder.value = null
                 _saasNotice.value = "Langganan ${settled.planTier.title} terverifikasi & aktif!"
+            } else {
+                // Lisensi tidak pernah diterbitkan offline lagi: pembayaran harus diverifikasi server.
+                _saasNotice.value =
+                    "Pembayaran belum terverifikasi. Sambungkan internet lalu cek ulang status QRIS."
             }
         }
     }

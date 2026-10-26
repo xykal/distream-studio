@@ -16,7 +16,7 @@
 2. **Kanvas Preview Live WYSIWYG Interaktif (`ui/LiveCanvasEditor.kt`)**:
    - **Feed Kamera Hardware Asli (`CameraX PreviewView`)** langsung menyala di panggung utama maupun kotak Facecam PiP (Lensa Depan/Belakang + Mirror).
    - **Ganti Orientasi Instan**: `9:16 TikTok Potret (1080x1920)`, `16:9 Lanskap Game/YouTube (1920x1080)`, `4:5 Feed Kreator (1080x1350)`, dan `1:1 Kotak Studio (1080x1080)` lengkap dengan panduan **Safe Zone TikTok LIVE** serta **Grid 3x3**.
-   - **Drag, Resize & Edit Langsung di Layar**: Sentuh dan geser bebas posisi widget `Target Gift`, `Tap-Tap Love`, `Subathon Timer`, `Facecam PiP`, `Running Text`, maupun layer teks kustom langsung di atas kanvas preview, lalu koordinat persisnya ikut tersinkron ke encoder video RTMP/RTMPS.
+   - **Drag, Resize & Edit Langsung di Layar**: Sentuh dan geser bebas posisi widget `Target Gift`, `Tap-Tap Love`, `Subathon Timer`, `Running Text`, maupun layer teks kustom langsung di atas kanvas preview, lalu koordinat persisnya ikut tersinkron ke encoder video RTMP/RTMPS. *(Catatan rilis: kotak `Facecam PiP` sudah bisa digeser di preview, namun belum ikut ter-composite ke encoder — masuk backlog Sprint 2.)*
 3. **Mode Uji Kapsul Melayang Mandiri ("Tes Melayang" — `overlay/FloatingHudManager.kt`)**:
    - Uji dan jalankan kapsul kontrol melayang (`TYPE_APPLICATION_OVERLAY`) kapan saja di atas game atau aplikasi lain **tanpa harus memulai stream RTMP terlebih dahulu**.
    - Fitur kapsul melayang: *free-drag*, mengecil otomatis menjadi gelembung tepi layar (`DS LIVE`), pengatur transparansi (`96% / 78% / 58%`), ukuran Facecam PiP (`S / M / L`), ganti Scene cepat, pad SoundFX, tombol tahan sensor 1kHz, serta Layar Privasi Anti-OTP.

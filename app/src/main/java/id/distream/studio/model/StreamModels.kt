@@ -186,6 +186,7 @@ enum class SoundFxPad(
 }
 
 enum class RtmpDestinationPreset(val platformName: String, val defaultServerUrl: String) {
+    RESTREAM("Restream Multistream (TikTok + YouTube + Twitch)", "rtmps://live.restream.io/live"),
     TIKTOK_RTMPS("TikTok LIVE (RTMPS Aman)", "rtmps://push.rtmp.tiktok.com/live"),
     TIKTOK_RTMP("TikTok LIVE (RTMP Standar)", "rtmp://push.rtmp.tiktok.com/live"),
     YOUTUBE_LIVE("YouTube Live", "rtmps://a.rtmps.youtube.com/live2"),

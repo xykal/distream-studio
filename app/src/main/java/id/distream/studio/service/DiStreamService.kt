@@ -18,7 +18,6 @@ import android.media.projection.MediaProjectionManager
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Environment
-import android.provider.Settings
 import android.speech.tts.TextToSpeech
 import android.view.SurfaceView
 import android.view.View
@@ -78,7 +77,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -422,28 +420,24 @@ class DiStreamService : LifecycleService(), ConnectChecker {
         chatBridge.connect(settings.chatWebSocketUrl, settings.tiktokUsername)
 
         lifecycleScope.launch {
-            @SuppressLint("HardwareIds")
-            val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
-                ?: "android-device"
-            val simulcastRelay = if (settings.simulcastEnabled && activeTier.allowMultiStreamSimulcast) {
-                withContext(Dispatchers.IO) {
-                    SaasSubscriptionManager.requestSimulcastIngestUrl(
-                        settings.saasBackendUrl,
-                        settings,
-                        deviceId
-                    )
-                }
-            } else null
-
-            val finalEndpoint = simulcastRelay ?: rawEndpoint
+            // DiStream hanya mengirim SATU ingest RTMP. Multistream (TikTok + YouTube + Twitch)
+            // diatur di sisi penyedia relay (Restream, dsb). JANGAN mengarahkan encoder ke relay
+            // internal yang tidak punya server ingest RTMP — dulu ini membuat siaran mati total.
+            val finalEndpoint = rawEndpoint
             val failoverArmed = activeTier.allowCloudFailoverShield && settings.cloudFailoverShieldEnabled
+
+            if (settings.simulcastEnabled && activeTier.allowMultiStreamSimulcast) {
+                logSystemEvent(
+                    "Multistream aktif via dashboard Restream: encoder tetap mengirim ke satu endpoint ingest."
+                )
+            }
 
             logSystemEvent("Menghubungkan ke server (${StreamKeyVault.sanitizeEndpointForDisplay(finalEndpoint)})")
             _runtimeState.update {
                 it.copy(
                     status = StreamStatus.CONNECTING,
                     activeScene = settings.activeScene,
-                    isSimulcastActive = simulcastRelay != null,
+                    isSimulcastActive = false,
                     isCloudFailoverArmed = failoverArmed,
                     subathonSecondsLeft = settings.subathonRemainingSeconds,
                     statusMessage = "Menghubungkan ke server...",

@@ -42,6 +42,45 @@ class DiStreamComprehensiveTest {
     }
 
     @Test
+    fun `resolveActiveTier is fail-closed and never trusts a raw tier field without a valid token`() {
+        // Tanpa token lisensi: field saasTier mentah tidak boleh memberi akses berbayar.
+        val noToken = StreamSettings(
+            saasTier = SaasPlanTier.MONTHLY,
+            saasLicenseToken = "",
+            saasExpiresAtMillis = System.currentTimeMillis() + 30L * 24 * 3600 * 1000
+        )
+        assertEquals(SaasPlanTier.FREE, SaasSubscriptionManager.resolveActiveTier(noToken))
+
+        // Token kedaluwarsa / palsu juga harus turun ke FREE.
+        val expired = StreamSettings(
+            saasTier = SaasPlanTier.WEEKLY,
+            saasLicenseToken = "DST1.palsu.palsu",
+            saasExpiresAtMillis = System.currentTimeMillis() + 3600_000L
+        )
+        assertEquals(SaasPlanTier.FREE, SaasSubscriptionManager.resolveActiveTier(expired))
+
+        // expiresAt yang sudah lewat juga menutup akses walau token masih "valid" secara bentuk.
+        val stale = StreamSettings(
+            saasTier = SaasPlanTier.MONTHLY,
+            saasLicenseToken = "DST1.palsu.palsu",
+            saasExpiresAtMillis = System.currentTimeMillis() - 1_000L
+        )
+        assertEquals(SaasPlanTier.FREE, SaasSubscriptionManager.resolveActiveTier(stale))
+    }
+
+    @Test
+    fun `Restream preset is available as the single-ingest multistream destination`() {
+        val preset = id.distream.studio.model.RtmpDestinationPreset.RESTREAM
+        assertEquals("rtmps://live.restream.io/live", preset.defaultServerUrl)
+        val settings = StreamSettings(
+            destinationPreset = preset,
+            serverUrl = preset.defaultServerUrl,
+            streamKey = "restream-key-123"
+        )
+        assertEquals("rtmps://live.restream.io/live/restream-key-123", settings.buildFullEndpoint())
+    }
+
+    @Test
     fun `SaaS signed token verifies authenticity, blocks tampering, and enforces device binding`() {
         val now = 1_760_000_000_000L
         val (token, expiresAt) = SaasSubscriptionManager.signLocalLicenseToken(

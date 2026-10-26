@@ -152,10 +152,27 @@ const PROMO_CODES = {
 
 class SaasBillingEngine {
   constructor(options = {}) {
-    this.signingSecret =
+    const resolvedSecret =
       options.signingSecret ||
       process.env.DISTREAM_LICENSE_SECRET ||
-      "distream-studio-default-hmac-key-2026";
+      "";
+    const allowInsecure =
+      options.allowInsecureDefaultSecret === true ||
+      process.env.DISTREAM_ALLOW_INSECURE_LICENSE_SECRET === "true";
+
+    // JANGAN pernah menandatangani lisensi dengan secret bawaan yang ikut terkirim di APK.
+    // Secret default lama ("distream-studio-default-hmac-key-2026") ada di dalam binary klien,
+    // jadi siapa pun bisa mencetak token MONTHLY valid selamanya bila server memakainya.
+    if (!resolvedSecret && !allowInsecure) {
+      throw new Error(
+        "DISTREAM_LICENSE_SECRET wajib di-set (minimal 32 karakter acak). " +
+          "Setel DISTREAM_ALLOW_INSECURE_LICENSE_SECRET=true hanya untuk unit test lokal."
+      );
+    }
+    if (resolvedSecret.length > 0 && resolvedSecret.length < 32 && !allowInsecure) {
+      throw new Error("DISTREAM_LICENSE_SECRET terlalu pendek (minimal 32 karakter).");
+    }
+    this.signingSecret = resolvedSecret || "insecure-test-only-secret";
     this.pakasirProject = options.pakasirProject ?? process.env.PAKASIR_PROJECT ?? "";
     this.pakasirApiKey = options.pakasirApiKey ?? process.env.PAKASIR_API_KEY ?? "";
     this.resendApiKey = options.resendApiKey ?? process.env.RESEND_EMAIL_API_KEY ?? "";
@@ -600,16 +617,15 @@ class SaasBillingEngine {
       err.statusCode = 400;
       throw err;
     }
-    const relayKey = `simul_${crypto.randomBytes(8).toString("hex")}`;
-    const session = {
-      relayIngestUrl: `rtmps://relay.distream.studio/live/${relayKey}`,
-      targetCount: targets.length,
-      platforms: targets.map((t) => t.platform || "Custom RTMP"),
-      bandwidthSavedPercent: Math.round(((targets.length - 1) / targets.length) * 100),
-      active: true
-    };
-    this.simulcastSessions.set(relayKey, session);
-    return session;
+    // Relay ingest RTMP ini belum punya server produksi. Versi sebelumnya mengembalikan URL
+    // `rtmps://relay.distream.studio/...` yang tidak pernah ada, sehingga aplikasi yang memakainya
+    // justru gagal connect ke semua platform. Multistream dilakukan di sisi penyedia relay
+    // (Restream/SociaBuzz) dengan satu endpoint ingest.
+    const err = new Error(
+      "Cloud relay ingest belum tersedia. Gunakan satu endpoint ingest (mis. Restream) untuk multistream."
+    );
+    err.statusCode = 501;
+    throw err;
   }
 
   armCloudFailoverShield(licenseToken, deviceId, fallbackHeadline) {

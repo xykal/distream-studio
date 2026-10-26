@@ -12,19 +12,14 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
-import android.graphics.Color
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Environment
-import android.provider.Settings
 import android.speech.tts.TextToSpeech
 import android.view.SurfaceView
 import android.view.View
-import android.webkit.WebChromeClient
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -53,6 +48,7 @@ import id.distream.studio.R
 import id.distream.studio.audio.ProBroadcastDspEffect
 import id.distream.studio.audio.SoundFxSynthesizer
 import id.distream.studio.chat.TikTokChatBridge
+import id.distream.studio.graphics.SceneCompositor
 import id.distream.studio.graphics.SceneSlateRenderer
 import id.distream.studio.model.AudioCaptureMode
 import id.distream.studio.model.ColorGradePreset
@@ -78,7 +74,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -110,7 +105,7 @@ class DiStreamService : LifecycleService(), ConnectChecker {
     private var sceneBeforeShield: StudioScene = StudioScene.GAMEPLAY
     private var onStreamEndedAutoWipeCallback: (() -> Unit)? = null
 
-    private var overlayWebView: WebView? = null
+    private val sceneCompositor by lazy { SceneCompositor(applicationContext) }
     private var viewFilterRender: ViewFilterRender? = null
     private var uptimeJob: Job? = null
 
@@ -422,28 +417,24 @@ class DiStreamService : LifecycleService(), ConnectChecker {
         chatBridge.connect(settings.chatWebSocketUrl, settings.tiktokUsername)
 
         lifecycleScope.launch {
-            @SuppressLint("HardwareIds")
-            val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
-                ?: "android-device"
-            val simulcastRelay = if (settings.simulcastEnabled && activeTier.allowMultiStreamSimulcast) {
-                withContext(Dispatchers.IO) {
-                    SaasSubscriptionManager.requestSimulcastIngestUrl(
-                        settings.saasBackendUrl,
-                        settings,
-                        deviceId
-                    )
-                }
-            } else null
-
-            val finalEndpoint = simulcastRelay ?: rawEndpoint
+            // DiStream hanya mengirim SATU ingest RTMP. Multistream (TikTok + YouTube + Twitch)
+            // diatur di sisi penyedia relay (Restream, dsb). JANGAN mengarahkan encoder ke relay
+            // internal yang tidak punya server ingest RTMP — dulu ini membuat siaran mati total.
+            val finalEndpoint = rawEndpoint
             val failoverArmed = activeTier.allowCloudFailoverShield && settings.cloudFailoverShieldEnabled
+
+            if (settings.simulcastEnabled && activeTier.allowMultiStreamSimulcast) {
+                logSystemEvent(
+                    "Multistream aktif via dashboard Restream: encoder tetap mengirim ke satu endpoint ingest."
+                )
+            }
 
             logSystemEvent("Menghubungkan ke server (${StreamKeyVault.sanitizeEndpointForDisplay(finalEndpoint)})")
             _runtimeState.update {
                 it.copy(
                     status = StreamStatus.CONNECTING,
                     activeScene = settings.activeScene,
-                    isSimulcastActive = simulcastRelay != null,
+                    isSimulcastActive = false,
                     isCloudFailoverArmed = failoverArmed,
                     subathonSecondsLeft = settings.subathonRemainingSeconds,
                     statusMessage = "Menghubungkan ke server...",
@@ -542,10 +533,22 @@ class DiStreamService : LifecycleService(), ConnectChecker {
                 }
             }
             StudioScene.IRL_CAMERA -> {
-                val cam = Camera2Source(applicationContext).apply {
-                    enableOpticalVideoStabilization()
+                // Jangan pernah memakai base bitmap netral bila kamera komposit TIDAK bisa menyala
+                // (mis. izin overlay dicabut) — itu akan menghasilkan siaran layar hitam.
+                if (currentSettings.facecamInEncoder &&
+                    SceneCompositor.canDrawOverlays(applicationContext)
+                ) {
+                    // Kamera hidup di dalam SceneCompositor (satu-satunya pemilik kamera),
+                    // base encoder cukup bitmap netral agar tidak ada dua pipeline kamera.
+                    genericStream.changeVideoSource(
+                        BitmapSource(SceneCompositor.createNeutralBaseBitmap())
+                    )
+                } else {
+                    val cam = Camera2Source(applicationContext).apply {
+                        enableOpticalVideoStabilization()
+                    }
+                    genericStream.changeVideoSource(cam)
                 }
-                genericStream.changeVideoSource(cam)
             }
             StudioScene.STARTING_SOON,
             StudioScene.INTERMISSION_BRB,
@@ -577,6 +580,10 @@ class DiStreamService : LifecycleService(), ConnectChecker {
     }
 
     fun switchCameraLens() {
+        if (currentSettings.facecamInEncoder) {
+            sceneCompositor.switchLens(this)
+            return
+        }
         val src = genericStream.videoSource
         if (src is Camera2Source) src.switchCamera()
     }
@@ -608,45 +615,69 @@ class DiStreamService : LifecycleService(), ConnectChecker {
 
             if (!settings.overlayMasterEnabled) {
                 viewFilterRender = null
+                sceneCompositor.setProviderOverlayVisible(false)
                 return@launch
             }
 
-            val webView = overlayWebView ?: WebView(applicationContext).apply {
-                setBackgroundColor(Color.TRANSPARENT)
-                setLayerType(View.LAYER_TYPE_HARDWARE, null)
-                webChromeClient = WebChromeClient()
-                webViewClient = object : WebViewClient() {
-                    override fun onPageFinished(view: WebView?, url: String?) {
-                        pushCompositorStateJs()
-                    }
-                }
-                this.settings.javaScriptEnabled = true
-                this.settings.domStorageEnabled = true
-                this.settings.mediaPlaybackRequiresUserGesture = false
-            }.also { overlayWebView = it }
+            // Overlay provider donasi (Saweria/Sociabuzz) dimuat LANGSUNG sebagai WebView sendiri.
+            // Versi sebelumnya memakai <iframe> di dalam HTML base URL yang tidak ada, sehingga
+            // halaman provider diblokir X-Frame-Options / CSP dan lapisan overlay tampil kosong.
+            sceneCompositor.setProviderOverlay(settings.primaryOverlayUrl)
+            sceneCompositor.setProviderOverlayVisible(settings.primaryOverlayVisible)
 
-            val widthSpec = View.MeasureSpec.makeMeasureSpec(streamWidth, View.MeasureSpec.EXACTLY)
-            val heightSpec = View.MeasureSpec.makeMeasureSpec(streamHeight, View.MeasureSpec.EXACTLY)
-            webView.measure(widthSpec, heightSpec)
-            webView.layout(0, 0, streamWidth, streamHeight)
+            val composedRoot = sceneCompositor.widgetWebView().let { widgetView ->
+                sceneCompositor.loadWidgetHtml(buildCreatorCompositorHtml(settings))
+                widgetView
+            }
+            composedRoot.post { pushCompositorStateJs() }
 
-            webView.loadDataWithBaseURL(
-                "https://compositor.distream.studio/",
-                buildCreatorCompositorHtml(settings),
-                "text/html",
-                "utf-8",
-                null
-            )
+            // Urutan penting: layout kanvas dulu (menetapkan stageWidth/Height),
+            // baru menempelkan jendela offscreen & menyalakan kamera pada ukuran yang benar.
+            sceneCompositor.layoutAt(streamWidth, streamHeight)
+            applyFacecamComposition(settings)
 
             val overlayFilter = ViewFilterRender().apply {
                 targetFps = 30
-                view = webView
+                view = sceneCompositor.root
                 setPosition(0f, 0f)
                 setScale(100f, 100f)
             }
             viewFilterRender = overlayFilter
             gl.addFilter(overlayFilter)
         }
+    }
+
+    /**
+     * Menyusun lapisan facecam di dalam kompositor.
+     * Mode "facecamInEncoder" menyalakan kamera di pohon View (PiP untuk game, penuh untuk scene IRI).
+     * Bila izin overlay belum ada, kompositor tidak bisa menerima frame kamera -> fitur dimatikan
+     * dan encoder tetap memakai Camera2Source seperti sebelumnya.
+     */
+    private fun applyFacecamComposition(settings: StreamSettings) {
+        if (!settings.facecamInEncoder) {
+            sceneCompositor.disableFacecam()
+            return
+        }
+        val attached = sceneCompositor.attachOffscreenWindow()
+        if (!attached) {
+            logSystemEvent(
+                "Facecam encoder butuh izin 'Gambar di atas aplikasi lain'. " +
+                    "Aktifkan izin tersebut lalu mulai ulang siaran."
+            )
+            sceneCompositor.disableFacecam()
+            return
+        }
+        val layout = SceneCompositor.FacecamLayout(
+            xPercent = settings.facecamXPercent,
+            yPercent = settings.facecamYPercent,
+            widthPercent = (26f * settings.facecamScale).coerceIn(12f, 100f)
+        )
+        sceneCompositor.enableFacecam(
+            lifecycleOwner = this,
+            useFrontLens = settings.cameraFrontLens,
+            fullScreen = settings.activeScene == StudioScene.IRL_CAMERA,
+            layout = layout
+        )
     }
 
     fun syncLiveSettings(updated: StreamSettings) {
@@ -735,10 +766,7 @@ class DiStreamService : LifecycleService(), ConnectChecker {
         }.toString()
 
         lifecycleScope.launch(Dispatchers.Main) {
-            overlayWebView?.evaluateJavascript(
-                "window.syncDiStreamLayers && window.syncDiStreamLayers($payload);",
-                null
-            )
+            sceneCompositor.pushWidgetState(payload)
         }
     }
 
@@ -758,9 +786,8 @@ class DiStreamService : LifecycleService(), ConnectChecker {
         val s = JSONObject.quote(sender)
         val d = JSONObject.quote(detail)
         lifecycleScope.launch(Dispatchers.Main) {
-            overlayWebView?.evaluateJavascript(
-                "window.showDiStreamAlert && window.showDiStreamAlert($c, $s, $d);",
-                null
+            sceneCompositor.runWidgetScript(
+                "window.showDiStreamAlert && window.showDiStreamAlert($c, $s, $d);"
             )
         }
     }
@@ -847,6 +874,7 @@ class DiStreamService : LifecycleService(), ConnectChecker {
         mediaProjection = null
         chatBridge.disconnect()
         floatingHud.dismiss()
+        sceneCompositor.release()
 
         if (currentSettings.autoWipeStreamKeyAfterLive) {
             onStreamEndedAutoWipeCallback?.invoke()
@@ -1016,12 +1044,10 @@ class DiStreamService : LifecycleService(), ConnectChecker {
     }
 
     private fun buildCreatorCompositorHtml(s: StreamSettings): String {
-        val iframe1 = if (s.primaryOverlayUrl.isNotBlank()) {
-            """<iframe id="extLayer1" class="ext-frame" src="${s.primaryOverlayUrl.trim()}"></iframe>"""
-        } else ""
-        val iframe2 = if (s.secondaryOverlayUrl.isNotBlank()) {
-            """<iframe id="extLayer2" class="ext-frame" src="${s.secondaryOverlayUrl.trim()}"></iframe>"""
-        } else ""
+        // Overlay provider TIDAK lagi dimuat lewat <iframe>: banyak halaman overlay mengirim
+        // X-Frame-Options/CSP sehingga iframe tampil kosong. Provider dimuat sebagai WebView
+        // tersendiri di SceneCompositor.setProviderOverlay().
+
 
         return """
             <!DOCTYPE html>
@@ -1103,8 +1129,6 @@ class DiStreamService : LifecycleService(), ConnectChecker {
               </style>
             </head>
             <body>
-              $iframe1
-              $iframe2
               <div id="goalWidget" class="goal-bar">
                 <div class="goal-head"><span id="goalTitle">Target Gift</span><span id="goalNums">350 / 1000</span></div>
                 <div class="goal-track"><div id="goalFill" class="goal-fill"></div></div>

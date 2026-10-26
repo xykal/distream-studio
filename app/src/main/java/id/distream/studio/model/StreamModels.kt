@@ -186,6 +186,7 @@ enum class SoundFxPad(
 }
 
 enum class RtmpDestinationPreset(val platformName: String, val defaultServerUrl: String) {
+    RESTREAM("Restream Multistream (TikTok + YouTube + Twitch)", "rtmps://live.restream.io/live"),
     TIKTOK_RTMPS("TikTok LIVE (RTMPS Aman)", "rtmps://push.rtmp.tiktok.com/live"),
     TIKTOK_RTMP("TikTok LIVE (RTMP Standar)", "rtmp://push.rtmp.tiktok.com/live"),
     YOUTUBE_LIVE("YouTube Live", "rtmps://a.rtmps.youtube.com/live2"),
@@ -291,6 +292,13 @@ data class StreamSettings(
     // Floating Control & Facecam
     val floatingHudEnabled: Boolean = true,
     val floatingFacecamEnabled: Boolean = true,
+    /**
+     * BETA: kamera dikomposisikan DI DALAM encoder (via SceneCompositor) sehingga kotak Facecam
+     * benar-benar tampil di siaran dan bisa digeser seperti di preview. Saat false, kamera scene IRL
+     * tetap memakai Camera2Source langsung (perilaku v4.0.0).
+     * Wajib diuji di perangkat fisik sebelum dijadikan default.
+     */
+    val facecamInEncoder: Boolean = false,
     val facecamSizeIndex: Int = 1,
     val hudOpacityPercent: Int = 92,
 

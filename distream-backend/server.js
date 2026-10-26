@@ -6,8 +6,37 @@
 const fs = require("fs");
 const path = require("path");
 const http = require("http");
+const crypto = require("crypto");
 const { URL } = require("url");
 const { SaasBillingEngine } = require("./saasEngine");
+
+const MAX_DONATION_AMOUNT = 50_000_000;
+const WEBHOOK_RATE_LIMIT = { windowMs: 60_000, maxHits: 60 };
+
+/** Perbandingan string constant-time agar token webhook tidak bisa ditebak lewat timing. */
+function safeEqual(a, b) {
+  const bufA = Buffer.from(String(a ?? ""), "utf8");
+  const bufB = Buffer.from(String(b ?? ""), "utf8");
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+/**
+ * Parser nominal donasi yang ketat.
+ * Menerima "50000", "Rp 50.000", 50000. Menolak nilai negatif, NaN, dan nilai di luar batas wajar.
+ */
+function parseDonationAmount(raw) {
+  if (typeof raw === "number") {
+    if (!Number.isFinite(raw)) return null;
+    const n = Math.floor(raw);
+    return n > 0 && n <= MAX_DONATION_AMOUNT ? n : null;
+  }
+  if (typeof raw !== "string") return null;
+  const digits = raw.replace(/[^0-9]/g, "");
+  if (!digits) return null;
+  const n = Number.parseInt(digits, 10);
+  return Number.isFinite(n) && n > 0 && n <= MAX_DONATION_AMOUNT ? n : null;
+}
 
 const BLOCKED_TERMS = [
   "judol", "slot gacor", "zeus88", "kasino", "bunuh", "anjing", "bangsat", "kontol", "memek"
@@ -47,6 +76,7 @@ function createDiStreamHttpHandler(options = {}) {
   const webhookSecret = options.webhookSecret ?? process.env.DISTREAM_SECRET ?? "";
   const saas = options.saasEngine || new SaasBillingEngine(options);
   const rooms = options.rooms || new Map();
+  const rateBuckets = new Map();
 
   function broadcastToRoom(roomToken, payload) {
     const clients = rooms.get(roomToken);
@@ -202,18 +232,48 @@ function createDiStreamHttpHandler(options = {}) {
       }
 
       if (req.method === "POST" && pathname.startsWith("/webhook/donation/")) {
-        const roomToken = pathname.split("/webhook/donation/")[1] || "default";
-        if (webhookSecret) {
-          const signature = req.headers["x-stream-token"] || "";
-          if (signature !== webhookSecret) {
-            res.writeHead(401);
-            res.end(JSON.stringify({ error: "Invalid webhook token" }));
-            return;
-          }
+        const roomToken = (pathname.split("/webhook/donation/")[1] || "default").slice(0, 64);
+
+        // FAIL-CLOSED: tanpa secret terkonfigurasi, endpoint ini menolak semua request.
+        // Sebelumnya endpoint terbuka penuh bila DISTREAM_SECRET kosong, sehingga siapa pun
+        // bisa memicu alert/TTS/goal palsu dengan nominal apa pun.
+        if (!webhookSecret) {
+          res.writeHead(503);
+          res.end(JSON.stringify({ error: "Webhook secret belum dikonfigurasi di server" }));
+          return;
         }
+
+        const providedToken = req.headers["x-stream-token"] || "";
+        if (!safeEqual(providedToken, webhookSecret)) {
+          res.writeHead(401);
+          res.end(JSON.stringify({ error: "Invalid webhook token" }));
+          return;
+        }
+
+        // Rate limit sederhana per room, mencegah banjir event palsu walau token bocor.
+        const nowMs = Date.now();
+        const bucket = rateBuckets.get(roomToken) || { count: 0, resetAt: nowMs + WEBHOOK_RATE_LIMIT.windowMs };
+        if (nowMs > bucket.resetAt) {
+          bucket.count = 0;
+          bucket.resetAt = nowMs + WEBHOOK_RATE_LIMIT.windowMs;
+        }
+        bucket.count += 1;
+        rateBuckets.set(roomToken, bucket);
+        if (bucket.count > WEBHOOK_RATE_LIMIT.maxHits) {
+          res.writeHead(429);
+          res.end(JSON.stringify({ error: "Too many donation events, slow down" }));
+          return;
+        }
+
         const body = await readJsonBody(req);
+        const amount = parseDonationAmount(body.amount_raw ?? body.amount);
+        if (amount === null) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: "Nominal donasi tidak valid" }));
+          return;
+        }
+
         const donor = sanitizeMessage(body.donator_name || body.supporter || body.name || "Supporter");
-        const amount = Number(body.amount_raw || body.amount || 10000);
         const message = sanitizeMessage(body.message || "Terima kasih atas dukungannya!");
 
         broadcastToRoom(roomToken, {
@@ -347,4 +407,11 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createDiStreamServer, createDiStreamHttpHandler, sanitizeMessage };
+module.exports = {
+  MAX_DONATION_AMOUNT,
+  parseDonationAmount,
+  safeEqual,
+  createDiStreamServer,
+  createDiStreamHttpHandler,
+  sanitizeMessage
+};

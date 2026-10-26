@@ -15,7 +15,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -108,12 +107,9 @@ class MainActivity : ComponentActivity() {
             val localAlert by viewModel.localPreviewAlert.collectAsState()
             val isCreatingOrder by viewModel.isCreatingOrder.collectAsState()
 
-            LaunchedEffect(settings.protectAppWindowFromCapture) {
-                StreamKeyVault.applyWindowScreenCaptureGuard(
-                    this@MainActivity,
-                    settings.protectAppWindowFromCapture
-                )
-            }
+            // FLAG_SECURE tidak lagi dipasang global (menyebabkan window app tampil hitam di siaran
+            // screen-capture). Proteksi sekarang dicakup per-permukaan sensitif: lihat
+            // SecureWindowScope() di StudioHomeScreen.
 
             DiStreamTheme(themeMode = settings.themeMode) {
                 StudioHomeScreen(

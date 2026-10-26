@@ -34,6 +34,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -874,6 +878,23 @@ private fun FloatingAndLiveEventDeck(
             onCheckedChange = { v -> onUpdateSettings { it.copy(floatingFacecamEnabled = v) } }
         )
 
+        Spacer(Modifier.height(10.dp))
+        DsToggle(
+            title = "Facecam Ikut Terekam ke Siaran (Beta)",
+            subtitle = "Kamera dikomposisikan di dalam encoder, jadi kotak facecam yang kamu geser di kanvas benar-benar tampil untuk penonton. Butuh izin 'Gambar di atas aplikasi lain'. Uji dulu sebelum live beneran.",
+            checked = settings.facecamInEncoder,
+            badge = "BETA",
+            onCheckedChange = { v -> onUpdateSettings { it.copy(facecamInEncoder = v) } }
+        )
+        if (settings.facecamInEncoder) {
+            Spacer(Modifier.height(4.dp))
+            DsText(
+                text = "Kalau layar siaran jadi hitam atau facecam beku: matikan opsi ini, pastikan izin overlay aktif, lalu mulai ulang siaran.",
+                size = 10.5.sp,
+                color = p.warnAmber
+            )
+        }
+
         Spacer(Modifier.height(12.dp))
         DsText("Tes Alert Donasi, Suara Pintar TTS & Rekaman", size = 12.sp, weight = FontWeight.Bold, color = p.textSecondary)
         Spacer(Modifier.height(6.dp))
@@ -901,6 +922,26 @@ private fun FloatingAndLiveEventDeck(
     }
 }
 
+/**
+ * P1 FIX: FLAG_SECURE dulu dipasang di SELURUH window aplikasi. Akibatnya, saat mode screen-capture
+ * aktif, jendela DiStream sendiri ikut tampil HITAM di siaran setiap streamer membuka aplikasi.
+ * Sekarang proteksi hanya menyala selama permukaan sensitif (input Stream Key / PIN) terlihat.
+ */
+@Composable
+private fun SecureWindowScope(active: Boolean) {
+    val activity = LocalContext.current.findActivityOrNull()
+    DisposableEffect(active, activity) {
+        activity?.let { StreamKeyVault.applyWindowScreenCaptureGuard(it, active) }
+        onDispose { activity?.let { StreamKeyVault.applyWindowScreenCaptureGuard(it, false) } }
+    }
+}
+
+private tailrec fun Context.findActivityOrNull(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivityOrNull()
+    else -> null
+}
+
 @Composable
 private fun SecurityAndProCloudDeck(
     settings: StreamSettings,
@@ -913,6 +954,8 @@ private fun SecurityAndProCloudDeck(
 ) {
     val p = LocalDiStreamPalette.current
     var manualTokenInput by remember { mutableStateOf("") }
+
+    SecureWindowScope(active = settings.protectAppWindowFromCapture)
 
     DsPanel {
         Row(
@@ -979,29 +1022,28 @@ private fun SecurityAndProCloudDeck(
         Spacer(Modifier.height(10.dp))
         Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
             DsToggle(
-                title = "Multi-Stream Cloud Simulcast (TikTok + YouTube + Twitch)",
-                subtitle = "1x upload hemat baterai & kuota ke 3 platform sekaligus",
+                title = "Multistream 1x Upload (via Restream)",
+                subtitle = "Encoder hanya kirim 1 stream. TikTok + YouTube + Twitch diatur di dashboard Restream (live.restream.io), hemat kuota & baterai.",
                 checked = settings.simulcastEnabled && activeTier.allowMultiStreamSimulcast,
                 badge = "Mingguan+",
                 onCheckedChange = { v ->
                     if (!activeTier.allowMultiStreamSimulcast) onOpenUpgrade()
-                    else onUpdateSettings { it.copy(simulcastEnabled = v) }
+                    else onUpdateSettings {
+                        it.copy(
+                            simulcastEnabled = v,
+                            simulcastYoutubeKey = "",
+                            simulcastTwitchKey = ""
+                        )
+                    }
                 }
             )
             if (settings.simulcastEnabled && activeTier.allowMultiStreamSimulcast) {
-                DsInputField(
-                    label = "YouTube Stream Key Tambahan",
-                    value = settings.simulcastYoutubeKey,
-                    placeholder = "xxxx-xxxx-xxxx-xxxx",
-                    onValueChange = { v -> onUpdateSettings { it.copy(simulcastYoutubeKey = v) } },
-                    isSecret = true
-                )
-                DsInputField(
-                    label = "Twitch Stream Key Tambahan",
-                    value = settings.simulcastTwitchKey,
-                    placeholder = "live_xxxxxxxx",
-                    onValueChange = { v -> onUpdateSettings { it.copy(simulcastTwitchKey = v) } },
-                    isSecret = true
+                DsText(
+                    "Pilih preset server 'Restream Multistream' di tab Destinasi, lalu tempel Stream Key Restream. " +
+                        "Restream tidak mengizinkan app mengirim 3 RTMP sekaligus dari HP — relay internal DiStream sudah dihapus " +
+                        "supaya siaran tidak pernah gagal connect.",
+                    size = 11.5.sp,
+                    color = p.textMuted
                 )
             }
             DsToggle(

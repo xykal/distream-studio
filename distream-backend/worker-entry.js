@@ -14,6 +14,8 @@
 
 import { createDiStreamHttpHandler } from "./server.js";
 import { RoomRelay } from "./worker-room-do.js";
+// Overlay HTML diimpor sebagai teks oleh esbuild (--loader:.html=text), jadi tidak butuh fs.
+import overlayTemplate from "./overlay.html";
 
 export { RoomRelay };
 
@@ -40,8 +42,9 @@ const STATUS_PAGE = `<!DOCTYPE html>
     <li><code>GET /api/saas/plans</code></li>
     <li><code>POST /api/saas/checkout</code></li>
     <li><code>POST /api/saas/license/verify</code></li>
-    <li><code>POST /webhook/donation/:roomToken</code></li>
+    <li><code>POST /webhook/donation/:roomToken</code> (Saweria, Sociabuzz, Trakteer, Tako, Sibagi, TipTap, BagiBagi)</li>
     <li><code>GET /ws?room=nama-room</code> (WebSocket relay donasi)</li>
+    <li><code>GET /overlay?room=nama-room&amp;goal=500000&amp;ticker=...</code> (Browser Source OBS)</li>
   </ul>
   <p>Relay donasi realtime aktif via Durable Object. Event chat/gift TikTok belum tersedia di node ini.</p>
 </main></body></html>`;
@@ -154,6 +157,35 @@ function makeNodeStyleResponse() {
   return res;
 }
 
+/**
+ * Merakit halaman overlay dari template HTML.
+ * Semua nilai berasal dari query string agar streamer bisa punya beberapa overlay URL
+ * dengan tema berbeda tanpa deploy ulang.
+ */
+function buildOverlayPage(url) {
+  const q = url.searchParams;
+  const room = (q.get("room") || q.get("uniqueId") || "default")
+    .replace(/^@/, "")
+    .trim()
+    .slice(0, 64) || "default";
+  const accentRaw = (q.get("accent") || "#22D3EE").trim();
+  const accent = /^#?[0-9a-fA-F]{3,8}$/.test(accentRaw)
+    ? (accentRaw.startsWith("#") ? accentRaw : `#${accentRaw}`)
+    : "#22D3EE";
+  const position = (q.get("pos") || "top").toLowerCase();
+  const showConn = q.get("conn") === "1" ? "1" : "0";
+  const tickerSpeed = `${Math.max(6, Math.min(40, Number(q.get("speed")) || 18))}s`;
+
+  return overlayTemplate
+    .replaceAll("__ROOM__", room)
+    .replaceAll("__ACCENT__", accent)
+    .replaceAll("__ALERT_TOP__", position === "bottom" ? "62%" : "14%")
+    .replaceAll("__RECENT_TOP__", position === "bottom" ? "6%" : "22%")
+    .replaceAll("__GOAL_BOTTOM__", position === "bottom" ? "20%" : "6%")
+    .replaceAll("__TICKER_SPEED__", tickerSpeed)
+    .replaceAll("__SHOW_CONN__", showConn);
+}
+
 export default {
   async fetch(request, env) {
     // Workers: environment variable masuk ke env, sedangkan server.js membacanya dari process.env
@@ -180,6 +212,18 @@ export default {
       const doUrl = new URL("https://room-relay/socket");
       doUrl.searchParams.set("room", room);
       return stub.fetch(new Request(doUrl.toString(), request));
+    }
+
+    // Overlay URL untuk OBS / TikTok Live Studio (Browser Source). Tanpa dependency eksternal:
+    // satu halaman HTML yang menyambung ke relay WebSocket di atas.
+    if (url.pathname === "/overlay" || url.pathname === "/overlay.html") {
+      return new Response(buildOverlayPage(url), {
+        status: 200,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-store"
+        }
+      });
     }
 
     if (url.pathname === "/" || url.pathname === "/index.html") {

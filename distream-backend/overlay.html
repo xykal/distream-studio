@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DiStream Overlay</title>
+<style>
+  :root {
+    --accent: __ACCENT__;
+    --ink: #FFFFFF;
+    --card: rgba(10, 13, 20, 0.82);
+    --stroke: rgba(255, 255, 255, 0.14);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    background: transparent; overflow: hidden;
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .stage { position: fixed; inset: 0; pointer-events: none; }
+
+  /* ---------- Alert card ---------- */
+  .alerts {
+    position: absolute; left: 50%; top: __ALERT_TOP__;
+    transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    width: min(560px, 92vw);
+  }
+  .alert {
+    width: 100%;
+    padding: 14px 18px;
+    border-radius: 16px;
+    background: var(--card);
+    border: 1.5px solid var(--accent);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45), 0 0 0 4px rgba(255, 255, 255, 0.03) inset;
+    color: var(--ink);
+    display: flex; align-items: center; gap: 14px;
+    opacity: 0; transform: translateY(-16px) scale(0.96);
+    transition: opacity .28s ease, transform .34s cubic-bezier(.2,.9,.3,1.4);
+    backdrop-filter: blur(10px);
+  }
+  .alert.show { opacity: 1; transform: translateY(0) scale(1); }
+  .alert.hide { opacity: 0; transform: translateY(-10px) scale(0.97); }
+  .alert .badge {
+    flex: 0 0 auto;
+    width: 44px; height: 44px; border-radius: 12px;
+    display: grid; place-items: center;
+    font-size: 21px;
+    background: linear-gradient(160deg, var(--accent), rgba(255,255,255,0.12));
+  }
+  .alert .who { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,.62); }
+  .alert .amt { font-size: 25px; font-weight: 800; line-height: 1.1; color: var(--accent); }
+  .alert .msg { font-size: 14.5px; color: rgba(255,255,255,.9); margin-top: 2px; word-break: break-word; }
+  .alert .prov { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.42); }
+
+  /* ---------- Goal bar ---------- */
+  .goal {
+    position: absolute; left: 6%; right: 6%; bottom: __GOAL_BOTTOM__;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: var(--card);
+    border: 1px solid var(--stroke);
+    color: var(--ink);
+  }
+  .goal-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .goal-title { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.6); }
+  .goal-value { font-size: 13px; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent); }
+  .track { margin-top: 7px; height: 10px; border-radius: 999px; background: rgba(255,255,255,.12); overflow: hidden; }
+  .fill {
+    height: 100%; width: 0%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), rgba(255,255,255,.75));
+    transition: width .7s cubic-bezier(.2,.8,.2,1);
+    box-shadow: 0 0 16px var(--accent);
+  }
+
+  /* ---------- Recent donors ---------- */
+  .recent {
+    position: absolute; right: 4%; top: __RECENT_TOP__;
+    width: 250px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .recent .item {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 6px 10px; border-radius: 10px;
+    background: var(--card); border: 1px solid var(--stroke);
+    color: var(--ink); font-size: 12px;
+    animation: slideIn .3s ease;
+  }
+  .recent .item b { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .recent .item span { color: rgba(255,255,255,.55); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+
+  /* ---------- Ticker ---------- */
+  .ticker {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 7px 0; overflow: hidden;
+    background: linear-gradient(90deg, rgba(0,0,0,0), rgba(10,13,20,.86) 12%, rgba(10,13,20,.86) 88%, rgba(0,0,0,0));
+    color: var(--ink); font-size: 13px; white-space: nowrap;
+  }
+  .ticker span { display: inline-block; padding-left: 100%; animation: scroll __TICKER_SPEED__ linear infinite; }
+  @keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+
+  /* ---------- Status dot (kecil, untuk cek koneksi) ---------- */
+  .conn {
+    position: absolute; left: 12px; top: 12px;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+    color: rgba(255,255,255,.5);
+    opacity: __SHOW_CONN__; transition: opacity .4s ease;
+  }
+  .conn i { width: 7px; height: 7px; border-radius: 50%; background: #f43f5e; }
+  .conn.on i { background: #34d399; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="conn" id="conn"><i></i><span id="connLabel">menyambung…</span></div>
+  <div class="alerts" id="alerts"></div>
+  <div class="recent" id="recent"></div>
+  <div class="goal" id="goal" style="display:none">
+    <div class="goal-row">
+      <span class="goal-title" id="goalTitle">Target Donasi</span>
+      <span class="goal-value" id="goalValue">Rp 0 / -</span>
+    </div>
+    <div class="track"><div class="fill" id="goalFill"></div></div>
+  </div>
+  <div class="ticker" id="ticker" style="display:none"><span id="tickerText"></span></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var ROOM = "__ROOM__";
+
+  var params = new URLSearchParams(location.search);
+  var room = params.get("room") || ROOM || "default";
+  var accent = params.get("accent") || "__ACCENT__";
+  var goalTarget = parseInt(params.get("goal") || "0", 10);
+  var goalTitle = params.get("goalTitle") || "Target Donasi";
+  var tickerText = params.get("ticker") || "";
+  var demo = params.get("demo") === "1";
+  var showConn = params.get("conn") === "1";
+
+  document.documentElement.style.setProperty("--accent", accent);
+  document.getElementById("conn").style.opacity = showConn ? "1" : "0";
+
+  if (goalTarget > 0) {
+    document.getElementById("goal").style.display = "block";
+    document.getElementById("goalTitle").textContent = goalTitle;
+    renderGoal(0);
+  }
+  if (tickerText) {
+    document.getElementById("ticker").style.display = "block";
+    document.getElementById("tickerText").textContent = tickerText;
+  }
+
+  var total = 0;
+  var alertQueue = [];
+  var busy = false;
+
+  function rupiah(n) {
+    return "Rp " + Number(n || 0).toLocaleString("id-ID");
+  }
+
+  function renderGoal(current) {
+    if (goalTarget <= 0) return;
+    var pct = Math.max(0, Math.min(100, (current / goalTarget) * 100));
+    document.getElementById("goalFill").style.width = pct.toFixed(1) + "%";
+    document.getElementById("goalValue").textContent =
+      rupiah(current) + " / " + rupiah(goalTarget);
+  }
+
+  function pushRecent(name, amount) {
+    var box = document.getElementById("recent");
+    var el = document.createElement("div");
+    el.className = "item";
+    var b = document.createElement("b");
+    b.textContent = rupiah(amount);
+    var s = document.createElement("span");
+    s.textContent = name;
+    el.appendChild(b);
+    el.appendChild(s);
+    box.insertBefore(el, box.firstChild);
+    while (box.children.length > 5) box.removeChild(box.lastChild);
+  }
+
+  function showAlert(payload) {
+    alertQueue.push(payload);
+    if (!busy) nextAlert();
+  }
+
+  function nextAlert() {
+    var payload = alertQueue.shift();
+    if (!payload) { busy = false; return; }
+    busy = true;
+
+    var card = document.createElement("div");
+    card.className = "alert";
+
+    var badge = document.createElement("div");
+    badge.className = "badge";
+    badge.textContent = "💸";
+
+    var body = document.createElement("div");
+    var who = document.createElement("div");
+    who.className = "who";
+    who.textContent = payload.nickname || "Supporter";
+
+    var amt = document.createElement("div");
+    amt.className = "amt";
+    amt.textContent = rupiah(payload.amount);
+
+    body.appendChild(who);
+    body.appendChild(amt);
+
+    if (payload.message) {
+      var msg = document.createElement("div");
+      msg.className = "msg";
+      msg.textContent = payload.message;
+      body.appendChild(msg);
+    }
+    if (payload.provider) {
+      var prov = document.createElement("div");
+      prov.className = "prov";
+      prov.textContent = payload.provider;
+      body.appendChild(prov);
+    }
+
+    card.appendChild(badge);
+    card.appendChild(body);
+    document.getElementById("alerts").appendChild(card);
+
+    requestAnimationFrame(function () { card.classList.add("show"); });
+
+    // nominal lebih besar = tampil lebih lama (6-11 detik)
+    var hold = Math.min(11000, 6000 + Math.floor((payload.amount || 0) / 25000) * 1000);
+    setTimeout(function () {
+      card.classList.add("hide");
+      setTimeout(function () {
+        card.remove();
+        nextAlert();
+      }, 380);
+    }, hold);
+
+    pushRecent(payload.nickname || "Supporter", payload.amount || 0);
+    total += Number(payload.amount || 0);
+    renderGoal(total);
+  }
+
+  function handleEvent(raw) {
+    var parsed;
+    try { parsed = JSON.parse(raw); } catch (e) { return; }
+    if (!parsed || !parsed.event) return;
+    if (parsed.event === "donation" && parsed.data) showAlert(parsed.data);
+    if (parsed.event === "system" && parsed.data && showConn) {
+      document.getElementById("connLabel").textContent = "relay tersambung";
+    }
+  }
+
+  // ---------------- koneksi WebSocket dengan reconnect otomatis ----------------
+  var attempt = 0;
+  function connect() {
+    var proto = location.protocol === "https:" ? "wss://" : "ws://";
+    var url = proto + location.host + "/ws?room=" + encodeURIComponent(room);
+    var ws;
+    try { ws = new WebSocket(url); } catch (e) { retry(); return; }
+
+    ws.onopen = function () {
+      attempt = 0;
+      var conn = document.getElementById("conn");
+      conn.classList.add("on");
+      document.getElementById("connLabel").textContent = "relay tersambung";
+    };
+    ws.onmessage = function (ev) { handleEvent(ev.data); };
+    ws.onclose = function () {
+      document.getElementById("conn").classList.remove("on");
+      document.getElementById("connLabel").textContent = "terputus, mencoba lagi…";
+      retry();
+    };
+    ws.onerror = function () { try { ws.close(); } catch (e) {} };
+  }
+
+  function retry() {
+    attempt = Math.min(attempt + 1, 6);
+    setTimeout(connect, Math.min(15000, 700 * Math.pow(1.7, attempt)));
+  }
+
+  if (demo) {
+    // Pratinjau tanpa siaran: event contoh supaya bisa cek tampilan di OBS.
+    var names = ["Kak Raka", "Sultan Mabar", "Ayuuu", "Bagas", "Dinda"];
+    var msgs = ["Gas push rank!", "Semangat bang", "Buat kopi dulu ya", "Mantap sniper-nya", ""];
+    var i = 0;
+    setTimeout(function () {
+      showAlert({ nickname: "Pratinjau", amount: 50000, message: "Ini contoh alert (mode demo)", provider: "demo" });
+    }, 600);
+    setInterval(function () {
+      i = (i + 1) % names.length;
+      showAlert({
+        nickname: names[i],
+        amount: Math.floor((Math.random() * 12 + 1)) * 5000,
+        message: msgs[i],
+        provider: "demo"
+      });
+    }, 7000);
+    return;
+  }
+
+  connect();
+})();
+</script>
+</body>
+</html>

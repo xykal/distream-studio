@@ -38,6 +38,65 @@ function parseDonationAmount(raw) {
   return Number.isFinite(n) && n > 0 && n <= MAX_DONATION_AMOUNT ? n : null;
 }
 
+/**
+ * Alias field antar provider donasi. Setiap layanan memakai nama yang berbeda:
+ *   Saweria      -> donator_name, amount_raw, message
+ *   Sociabuzz    -> data.name, data.amount, data.message
+ *   Trakteer     -> supporter_name, support_message, quantity (+unit_price)
+ *   Tako / Sibagi / TipTap -> mayoritas memakai name/amount/message di dalam objek "data"
+ * Ketimbang memaksa satu skema, kita cari nama field ini secara rekursif pada payload.
+ */
+const DONOR_NAME_KEYS = ["donator_name", "donor_name", "supporter_name", "supporter", "name", "username", "from", "nickname"];
+// CATATAN: "quantity" sengaja TIDAK masuk daftar ini — di Trakteer quantity = jumlah unit,
+// bukan nominal. Nilai sebenarnya adalah quantity x unit_price (ditangani di bawah).
+const DONOR_AMOUNT_KEYS = ["amount_raw", "amount", "nominal", "total", "gross_amount", "value", "price"];
+const DONOR_MESSAGE_KEYS = ["message", "support_message", "donator_message", "comment", "note", "pesan", "description"];
+
+function deepFindValue(obj, keys, maxDepth = 4) {
+  if (!obj || typeof obj !== "object" || maxDepth < 0) return undefined;
+  for (const key of keys) {
+    const val = obj[key];
+    if (val !== undefined && val !== null && val !== "") return val;
+  }
+  for (const val of Object.values(obj)) {
+    if (val && typeof val === "object") {
+      const found = deepFindValue(val, keys, maxDepth - 1);
+      if (found !== undefined) return found;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Menormalkan payload donasi dari provider apa pun menjadi { donor, amount, message }.
+ * @returns {{donor:string, amount:number, message:string}|null}
+ */
+function normalizeDonationPayload(body) {
+  if (!body || typeof body !== "object") return null;
+  const rawAmount = deepFindValue(body, DONOR_AMOUNT_KEYS);
+  let amount = parseDonationAmount(rawAmount);
+
+  // Trakteer & sebagian provider mengirim quantity + unit_price terpisah.
+  if (amount === null) {
+    const qty = Number(deepFindValue(body, ["quantity", "qty"]));
+    const unitPrice = Number(deepFindValue(body, ["unit_price", "unitPrice", "price_per_unit"]));
+    if (Number.isFinite(qty) && Number.isFinite(unitPrice) && qty > 0 && unitPrice > 0) {
+      amount = parseDonationAmount(qty * unitPrice);
+    }
+  }
+  if (amount === null) return null;
+
+  const donorRaw = deepFindValue(body, DONOR_NAME_KEYS);
+  const messageRaw = deepFindValue(body, DONOR_MESSAGE_KEYS);
+  return {
+    donor: sanitizeMessage(typeof donorRaw === "string" ? donorRaw : "Supporter"),
+    amount,
+    message: sanitizeMessage(
+      typeof messageRaw === "string" && messageRaw.trim() ? messageRaw : "Terima kasih atas dukungannya!"
+    )
+  };
+}
+
 const BLOCKED_TERMS = [
   "judol", "slot gacor", "zeus88", "kasino", "bunuh", "anjing", "bangsat", "kontol", "memek"
 ];
@@ -277,15 +336,20 @@ function createDiStreamHttpHandler(options = {}) {
         }
 
         const body = await readJsonBody(req);
-        const amount = parseDonationAmount(body.amount_raw ?? body.amount);
-        if (amount === null) {
+        // Normalisasi lintas provider (Saweria, Sociabuzz, Trakteer, Tako, Sibagi, TipTap, BagiBagi).
+        const normalized = normalizeDonationPayload(body);
+        if (normalized === null) {
           res.writeHead(400);
           res.end(JSON.stringify({ error: "Nominal donasi tidak valid" }));
           return;
         }
+        const { donor, amount, message } = normalized;
 
-        const donor = sanitizeMessage(body.donator_name || body.supporter || body.name || "Supporter");
-        const message = sanitizeMessage(body.message || "Terima kasih atas dukungannya!");
+        const provider = String(
+          req.headers["x-donation-provider"] || body.provider || body.type || "webhook"
+        )
+          .toLowerCase()
+          .slice(0, 24);
 
         broadcastToRoom(roomToken, {
           event: "donation",
@@ -293,6 +357,7 @@ function createDiStreamHttpHandler(options = {}) {
             nickname: donor,
             amount,
             message,
+            provider,
             subathonAddSeconds: Math.max(30, Math.floor(amount / 10000) * 60)
           }
         });
@@ -421,6 +486,7 @@ if (require.main === module) {
 module.exports = {
   MAX_DONATION_AMOUNT,
   parseDonationAmount,
+  normalizeDonationPayload,
   safeEqual,
   createDiStreamServer,
   createDiStreamHttpHandler,

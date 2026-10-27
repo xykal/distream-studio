@@ -91,6 +91,32 @@ request apa pun. Backend dipindahkan ke Cloudflare Workers tanpa mengubah logika
 - Aplikasi kini default ke `wss://distream-studio-cloud.dikanjut.workers.dev/ws`.
 - Perbaikan bug lama: nilai donasi dibagi 1000 sehingga estimasi pendapatan user 1000x lebih kecil.
 
+## Overlay URL untuk OBS / TikTok Live Studio (v4.2.1+)
+
+Cloud API sekarang melayani satu halaman overlay siap pakai sebagai **Browser Source**:
+
+```
+https://distream-studio-cloud.dikanjut.workers.dev/overlay?room=NAMA_ROOM
+```
+
+Parameter opsional: `accent` (hex, tanpa `#`), `goal` (target donasi), `goalTitle`, `ticker`,
+`pos=top|bottom`, `conn=1` (indikator koneksi), `speed` (detik ticker), `demo=1` (pratinjau
+tanpa siaran, event contoh).
+
+Cara pakai:
+1. Di OBS/TikTok Live Studio tambahkan **Browser Source** → tempel URL di atas.
+2. Ukuran 1080x1920 (atau 1920x1080), background transparan otomatis.
+3. Kirim donasi ke `POST /webhook/donation/NAMA_ROOM` → alert, goal bar, dan daftar donatur
+   terbaru bergerak realtime lewat WebSocket relay (Durable Object).
+
+## Webhook donasi 7 provider
+
+Satu endpoint, payload dinormalkan otomatis (`normalizeDonationPayload`): **Saweria, Sociabuzz,
+Trakteer, Tako, Sibagi, TipTap, BagiBagi**. Field boleh bernama `donator_name`/`name`/`supporter_name`
+dan boleh bersarang di dalam `data`; nominal boleh `amount`, `amount_raw`, `nominal`, atau
+`quantity x unit_price` (Trakteer). Opsional kirim header `X-Donation-Provider` agar badge
+provider tampil di overlay.
+
 ## Pembaruan v4.2.0 (Editor Transform + Replay Buffer)
 
 ### Geser & cubit sumber di kanvas (setara drag/scale Source di OBS)

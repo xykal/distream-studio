@@ -7,6 +7,7 @@ const {
   createDiStreamHttpHandler,
   sanitizeMessage,
   parseDonationAmount,
+  normalizeDonationPayload,
   safeEqual,
   MAX_DONATION_AMOUNT
 } = require("../server");
@@ -292,6 +293,41 @@ describe("DiStream Studio v3.0 — Backend SaaS, Security & Event Bus QA Suite",
     } finally {
       await new Promise((resolve) => naked.close(resolve));
     }
+  });
+
+  it("9. Donation payload dinormalkan lintas provider (Saweria, Sociabuzz, Trakteer, Tako, TipTap)", () => {
+    // Saweria / format lama
+    assert.deepEqual(
+      normalizeDonationPayload({ donator_name: "Sultan", amount_raw: 50000, message: "Gas" }),
+      { donor: "Sultan", amount: 50000, message: "Gas" }
+    );
+
+    // Sociabuzz: semua field di dalam objek "data" dan nominal berformat Rupiah
+    assert.deepEqual(
+      normalizeDonationPayload({ data: { name: "Ayuuu", amount: "Rp 75.000", message: "Mantap" } }),
+      { donor: "Ayuuu", amount: 75000, message: "Mantap" }
+    );
+
+    // Trakteer: quantity x unit_price, pesan memakai support_message
+    assert.deepEqual(
+      normalizeDonationPayload({
+        type: "donation",
+        supporter_name: "Bagas",
+        support_message: "Semangat",
+        quantity: 2,
+        unit_price: 25000
+      }),
+      { donor: "Bagas", amount: 50000, message: "Semangat" }
+    );
+
+    // TipTap/Tako generik: nickname + nominal
+    assert.equal(normalizeDonationPayload({ nickname: "Dinda", nominal: 20000 })?.amount, 20000);
+
+    // Pesan diblokir tetap tersanitasi, dan nominal tak wajar ditolak
+    assert.equal(normalizeDonationPayload({ name: "X", amount: 5000, message: "judol" })?.message, "***");
+    assert.equal(normalizeDonationPayload({ name: "X", amount: "abc" }), null);
+    assert.equal(normalizeDonationPayload({}), null);
+    assert.equal(normalizeDonationPayload(null), null);
   });
 
   it("8. parseDonationAmount only accepts sane positive integers", () => {

@@ -131,16 +131,14 @@ jobs:
           NOTES=$(cat <<EOF
           Rilis $TAG — DiStream Studio.
 
-          ## Hardening kritis
-          - Multistream memakai satu endpoint ingest (preset Restream); relay internal fiktif dihapus
-            sehingga siaran tidak pernah gagal connect karena URL relay yang tidak ada servernya.
-          - Lisensi fail-closed: token wajib diverifikasi, tidak ada lagi penerbitan lisensi offline.
-          - Webhook donasi: wajib token, perbandingan constant-time, validasi nominal, rate limit.
-          - FLAG_SECURE hanya pada permukaan sensitif (window aplikasi tidak lagi hitam di siaran).
-
-          ## Kompositor (beta)
-          - Overlay provider donasi dimuat sebagai WebView sendiri (bukan iframe).
-          - Opsi "Facecam Ikut Terekam ke Siaran" (beta, default mati) — butuh izin overlay.
+          ## Sorotan
+          - Editor transform di kanvas: geser 1 jari, cubit 2 jari, snap otomatis.
+          - Media latar gambar/video dengan mode Cover/Fit + transform ikut ke siaran.
+          - Replay Buffer asli 15-120 detik ke belakang (MP4 dipotong dari keyframe terdekat).
+          - Mixer audio per sumber: mic, game, SoundFX, media latar (mute terpisah).
+          - Overlay URL untuk OBS/TikTok Live Studio: GET /overlay?room=...
+          - Webhook donasi satu pintu untuk 7 provider (Saweria, Sociabuzz, Trakteer, Tako,
+            Sibagi, TipTap, BagiBagi) dengan normalisasi payload otomatis.
           EOF
           )
 

@@ -95,6 +95,8 @@ class StreamPreferencesRepository(private val appContext: Context) {
         val GOAL_TARGET = intPreferencesKey("goal_target")
         val TICKER_VIS = booleanPreferencesKey("ticker_vis")
         val TICKER_TEXT = stringPreferencesKey("ticker_text")
+        val BACKGROUND_MEDIA_URI = stringPreferencesKey("background_media_uri")
+        val BACKGROUND_MEDIA_IS_VIDEO = booleanPreferencesKey("background_media_is_video")
         val WATERMARK_VIS = booleanPreferencesKey("watermark_vis")
         val CUSTOM_TEXTS_JSON = stringPreferencesKey("custom_texts_json")
 
@@ -162,6 +164,8 @@ class StreamPreferencesRepository(private val appContext: Context) {
             likeTargetCount = prefs[Keys.LIKE_TARGET] ?: 10_000,
             colorGrade = enumOrDefault(prefs[Keys.COLOR_GRADE], ColorGradePreset.VIVID_GAME),
             streamTitleHeadline = prefs[Keys.HEADLINE] ?: "Mabar Santai Push Rank Malam Ini",
+            backgroundMediaUri = prefs[Keys.BACKGROUND_MEDIA_URI] ?: "",
+            backgroundMediaIsVideo = prefs[Keys.BACKGROUND_MEDIA_IS_VIDEO] ?: false,
             subathonTimerVisible = prefs[Keys.SUBATHON_VIS] ?: true,
             subathonRemainingSeconds = prefs[Keys.SUBATHON_SEC] ?: 3600,
             goalXPercent = prefs[Keys.GOAL_X] ?: 5f,
@@ -244,6 +248,8 @@ class StreamPreferencesRepository(private val appContext: Context) {
             prefs[Keys.LIKE_TARGET] = s.likeTargetCount
             prefs[Keys.COLOR_GRADE] = s.colorGrade.name
             prefs[Keys.HEADLINE] = s.streamTitleHeadline
+            prefs[Keys.BACKGROUND_MEDIA_URI] = s.backgroundMediaUri
+            prefs[Keys.BACKGROUND_MEDIA_IS_VIDEO] = s.backgroundMediaIsVideo
             prefs[Keys.SUBATHON_VIS] = s.subathonTimerVisible
             prefs[Keys.SUBATHON_SEC] = s.subathonRemainingSeconds
             prefs[Keys.GOAL_X] = s.goalXPercent

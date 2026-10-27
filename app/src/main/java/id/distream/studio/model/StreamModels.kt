@@ -234,6 +234,14 @@ data class StreamSettings(
     val manualBitrateKbps: Int = 4200,
     val manualFps: Int = 60,
     val adaptiveBitrate: Boolean = true,
+    /**
+     * Sumber media latar (setara "Image/Media Source" OBS). Diisi URI lokal
+     * (content:// atau file://) hasil pemilih file. Kosong = tidak dipakai.
+     * Hanya berlaku untuk scene yang bukan screen-capture (slate / kamera penuh).
+     */
+    val backgroundMediaUri: String = "",
+    val backgroundMediaIsVideo: Boolean = false,
+
     val showSafeZoneGuide: Boolean = true,
     val showGridGuide: Boolean = false,
     val cameraFrontLens: Boolean = true,
@@ -321,7 +329,7 @@ data class StreamSettings(
 
     // Live Event Relay
     val tiktokUsername: String = "",
-    val chatWebSocketUrl: String = "wss://distream-studio-cloud.vercel.app/"
+    val chatWebSocketUrl: String = "wss://distream-studio-cloud.dikanjut.workers.dev/ws"
 ) {
     fun buildFullEndpoint(): String {
         val cleanBase = serverUrl.trim().trimEnd('/')
@@ -360,6 +368,7 @@ data class StreamRuntimeState(
     val peakBitrateKbps: Int = 0,
     val estimatedIdrRevenue: Long = 0L,
     val replayClipsSaved: Int = 0,
+    val isClipRecording: Boolean = false,
     val isSimulcastActive: Boolean = false,
     val isCloudFailoverArmed: Boolean = false,
     val hasCongestion: Boolean = false,

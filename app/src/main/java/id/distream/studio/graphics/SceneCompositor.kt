@@ -3,13 +3,19 @@ package id.distream.studio.graphics
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.view.Gravity
+import android.view.Surface
+import android.view.TextureView
 import android.view.View
 import android.view.WindowManager
+import android.widget.ImageView
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -53,6 +59,7 @@ class SceneCompositor(private val context: Context) {
     private val windowManager: WindowManager? =
         context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
 
+
     private var widgetView: WebView? = null
     private var providerView: WebView? = null
     private var facecamView: PreviewView? = null
@@ -67,6 +74,29 @@ class SceneCompositor(private val context: Context) {
 
     private var overlayAttached = false
     private var overlayParams: WindowManager.LayoutParams? = null
+
+    // ---- Sumber media (setara "Media Source" / "Image Source" di OBS) ----
+    private val backgroundLayer = FrameLayout(context).apply {
+        setBackgroundColor(Color.BLACK)
+        visibility = View.GONE
+    }
+    private var backgroundImageView: ImageView? = null
+    private var backgroundTexture: TextureView? = null
+    private var backgroundPlayer: MediaPlayer? = null
+    private var backgroundVideoUri: Uri? = null
+    private var backgroundLooping = true
+    // PENTING: init block harus berada SETELAH deklarasi backgroundLayer,
+    // karena initializer Kotlin dieksekusi berurutan sesuai posisi di file.
+    init {
+        // urutan lapisan: background media (0) -> overlay provider (1) -> widget (2) -> kamera (3)
+        root.addView(
+            backgroundLayer,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        )
+    }
 
     data class FacecamLayout(
         /** posisi kiri dalam persen (0..100) */
@@ -131,7 +161,7 @@ class SceneCompositor(private val context: Context) {
             // provider di bawah widget DiStream
             root.addView(
                 created,
-                0,
+                1,
                 FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
                     FrameLayout.LayoutParams.MATCH_PARENT
@@ -193,6 +223,127 @@ class SceneCompositor(private val context: Context) {
     }
 
     fun widgetPageReady(): Boolean = (widgetView?.progress ?: 0) >= 100
+
+    // ------------------------------------------------------ Sumber Media (OBS-like)
+
+    /**
+     * Menampilkan gambar statis sebagai latar kanvas (setara "Image Source" di OBS).
+     * File dibaca dengan sampling agar hemat memori pada gambar besar.
+     */
+    fun setBackgroundImage(uriString: String, fitCenter: Boolean = true): Boolean {
+        clearBackground()
+        val uri = runCatching { Uri.parse(uriString) }.getOrNull() ?: return false
+        val bitmap = runCatching { decodeSampledBitmap(uri, stageWidth, stageHeight) }.getOrNull()
+            ?: return false
+        val imageView = ImageView(context).apply {
+            setImageBitmap(bitmap)
+            scaleType = if (fitCenter) ImageView.ScaleType.FIT_CENTER else ImageView.ScaleType.CENTER_CROP
+            setBackgroundColor(Color.BLACK)
+        }
+        backgroundImageView = imageView
+        backgroundLayer.addView(
+            imageView,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        )
+        backgroundLayer.visibility = View.VISIBLE
+        return true
+    }
+
+    /**
+     * Memutar video lokal secara berulang sebagai latar kanvas (setara "Media Source" OBS).
+     *
+     * Memakai TextureView + MediaPlayer, BUKAN VideoView: VideoView menggambar ke SurfaceView
+     * (window terpisah) sehingga TIDAK akan tertangkap kanvas GL encoder.
+     */
+    fun setBackgroundVideo(uriString: String, looping: Boolean = true): Boolean {
+        clearBackground()
+        val uri = runCatching { Uri.parse(uriString) }.getOrNull() ?: return false
+        val texture = TextureView(context)
+        backgroundTexture = texture
+        backgroundVideoUri = uri
+        backgroundLooping = looping
+        backgroundLayer.addView(
+            texture,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        )
+        backgroundLayer.visibility = View.VISIBLE
+
+        texture.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+            override fun onSurfaceTextureAvailable(st: android.graphics.SurfaceTexture, w: Int, h: Int) {
+                startBackgroundPlayer(Surface(st))
+            }
+
+            override fun onSurfaceTextureSizeChanged(st: android.graphics.SurfaceTexture, w: Int, h: Int) = Unit
+
+            override fun onSurfaceTextureDestroyed(st: android.graphics.SurfaceTexture): Boolean {
+                releaseBackgroundPlayer()
+                return true
+            }
+
+            override fun onSurfaceTextureUpdated(st: android.graphics.SurfaceTexture) = Unit
+        }
+        return true
+    }
+
+    private fun startBackgroundPlayer(surface: Surface) {
+        val uri = backgroundVideoUri ?: return
+        releaseBackgroundPlayer()
+        val player = MediaPlayer()
+        backgroundPlayer = player
+        runCatching {
+            player.setSurface(surface)
+            player.setDataSource(context, uri)
+            player.isLooping = backgroundLooping
+            player.setVolume(0f, 0f) // audio video latar tidak ikut ke mix stream
+            player.setOnPreparedListener { it.start() }
+            player.prepareAsync()
+        }.onFailure { releaseBackgroundPlayer() }
+    }
+
+    private fun releaseBackgroundPlayer() {
+        backgroundPlayer?.let { p ->
+            runCatching { if (p.isPlaying) p.stop() }
+            runCatching { p.release() }
+        }
+        backgroundPlayer = null
+    }
+
+    fun clearBackground() {
+        releaseBackgroundPlayer()
+        backgroundLayer.removeAllViews()
+        backgroundImageView = null
+        backgroundTexture = null
+        backgroundVideoUri = null
+        backgroundLayer.visibility = View.GONE
+    }
+
+    fun hasBackgroundMedia(): Boolean = backgroundLayer.visibility == View.VISIBLE
+
+    fun isVideoBackground(): Boolean = backgroundTexture != null
+
+    private fun decodeSampledBitmap(uri: Uri, targetW: Int, targetH: Int): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        context.contentResolver.openInputStream(uri)?.use {
+            BitmapFactory.decodeStream(it, null, bounds)
+        }
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        var sample = 1
+        while (bounds.outWidth / (sample * 2) >= targetW.coerceAtLeast(1) &&
+            bounds.outHeight / (sample * 2) >= targetH.coerceAtLeast(1)
+        ) {
+            sample *= 2
+        }
+        val opts = BitmapFactory.Options().apply { inSampleSize = sample }
+        return context.contentResolver.openInputStream(uri)?.use {
+            BitmapFactory.decodeStream(it, null, opts)
+        }
+    }
 
     // ---------------------------------------------------------------- Kamera
 
@@ -390,6 +541,7 @@ class SceneCompositor(private val context: Context) {
     // ---------------------------------------------------------------- Lifecycle
 
     fun release() {
+        clearBackground()
         disableFacecam()
         detachOffscreenWindow()
         runCatching { widgetView?.destroy() }

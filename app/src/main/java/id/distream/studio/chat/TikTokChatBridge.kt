@@ -113,7 +113,9 @@ class TikTokChatBridge {
                         type = LiveEventType.DONATION,
                         sender = sender,
                         message = "Rp $amount — $note",
-                        amountValue = (amount / 1000).coerceAtLeast(1)
+                        // amountValue dalam RUPIAH penuh. Sebelumnya dibagi 1000 sehingga
+                        // estimasi pendapatan & goal bar tercatat 1000x lebih kecil.
+                        amountValue = amount.coerceAtLeast(1)
                     )
                 }
                 "like" -> {

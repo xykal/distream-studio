@@ -66,6 +66,27 @@ request apa pun. Backend dipindahkan ke Cloudflare Workers tanpa mengubah logika
   Object). Semua endpoint HTTP berfungsi: health, katalog paket, checkout QRIS Pakasir,
   verifikasi lisensi, dan webhook donasi.
 
+## Pembaruan v4.1.0 (Inti OBS — belum dirilis)
+
+### Sumber media latar (Image/Media Source)
+- `SceneCompositor.setBackgroundImage()` dan `setBackgroundVideo()`: gambar atau video lokal
+  sebagai latar kanvas untuk scene slate / kamera penuh.
+- Video memakai `MediaPlayer` + `TextureView` (BUKAN `VideoView`), karena `VideoView` menggambar
+  ke SurfaceView sehingga tidak pernah tertangkap kanvas GL encoder.
+- Audio video latar otomatis di-mute agar tidak mengotori mix stream.
+- Pemilih file ada di tab Brankas: **Pilih Gambar / Pilih Video / Hapus**.
+
+### Klip kilat 30 detik (implementasi nyata)
+- Sebelumnya hanya menambah counter. Sekarang benar-benar merekam 30 detik ke
+  `StreamingIn_Klip30s_<timestamp>.mp4` sambil stream tetap jalan.
+- Dinamai "klip kilat" (rekam 30 detik ke depan), bukan replay buffer ke belakang.
+
+### Relay donasi realtime di Cloudflare Workers
+- `worker-room-do.js`: Durable Object `RoomRelay` (WebSocket hibernatable) per room.
+- Alur: `POST /webhook/donation/:room` → `RoomRelay.publish` → klien `wss://…/ws?room=:room`.
+- Aplikasi kini default ke `wss://distream-studio-cloud.dikanjut.workers.dev/ws`.
+- Perbaikan bug lama: nilai donasi dibagi 1000 sehingga estimasi pendapatan user 1000x lebih kecil.
+
 ## Struktur Proyek
 
 - `app/` — Aplikasi Android Native Kotlin (`compileSdk = 36`, `minSdk = 29`, `RootEncoder 2.8.1`, `CameraX`, `ZXing 3.5.3`, Custom Studio UI).

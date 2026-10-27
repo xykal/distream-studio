@@ -37,6 +37,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -904,7 +906,13 @@ private fun FloatingAndLiveEventDeck(
         }
         Spacer(Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-            DsButton("Simpan Replay 30s", compact = true, modifier = Modifier.weight(1f), onClick = onSaveReplayClip)
+            DsButton(
+                label = if (runtimeState.isClipRecording) "Merekam Klip…" else "Klip Kilat 30s",
+                compact = true,
+                modifier = Modifier.weight(1f),
+                active = runtimeState.isClipRecording,
+                onClick = onSaveReplayClip
+            )
             DsButton(
                 label = if (runtimeState.isRecordingLocal) "Stop Rekam MP4" else "Rekam MP4 Lokal",
                 compact = true,
@@ -953,6 +961,7 @@ private fun SecurityAndProCloudDeck(
     onTriggerPanic: () -> Unit
 ) {
     val p = LocalDiStreamPalette.current
+    val context = LocalContext.current
     var manualTokenInput by remember { mutableStateOf("") }
 
     SecureWindowScope(active = settings.protectAppWindowFromCapture)
@@ -984,6 +993,82 @@ private fun SecurityAndProCloudDeck(
                     }
                 )
             }
+        }
+
+        Spacer(Modifier.height(12.dp))
+        DsText("Sumber Media Latar (Opsional)", size = 12.sp, weight = FontWeight.Bold, color = p.textSecondary)
+        Spacer(Modifier.height(4.dp))
+        DsText(
+            text = "Setara \"Image/Media Source\" di OBS. Dipakai untuk scene slate / kamera penuh. Kosongkan untuk memakai slate bawaan.",
+            size = 10.5.sp,
+            color = p.textMuted
+        )
+        Spacer(Modifier.height(6.dp))
+        val mediaPicker = rememberLauncherForActivityResult(
+            ActivityResultContracts.OpenDocument()
+        ) { uri ->
+            uri?.let { picked ->
+                runCatching {
+                    context.contentResolver.takePersistableUriPermission(
+                        picked,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                }
+                onUpdateSettings {
+                    it.copy(
+                        backgroundMediaUri = picked.toString(),
+                        backgroundMediaIsVideo = false
+                    )
+                }
+            }
+        }
+        val videoPicker = rememberLauncherForActivityResult(
+            ActivityResultContracts.OpenDocument()
+        ) { uri ->
+            uri?.let { picked ->
+                runCatching {
+                    context.contentResolver.takePersistableUriPermission(
+                        picked,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                }
+                onUpdateSettings {
+                    it.copy(
+                        backgroundMediaUri = picked.toString(),
+                        backgroundMediaIsVideo = true
+                    )
+                }
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+            DsButton(
+                label = "Pilih Gambar",
+                compact = true,
+                modifier = Modifier.weight(1f),
+                onClick = { mediaPicker.launch(arrayOf("image/*")) }
+            )
+            DsButton(
+                label = "Pilih Video",
+                compact = true,
+                modifier = Modifier.weight(1f),
+                onClick = { videoPicker.launch(arrayOf("video/*")) }
+            )
+            DsButton(
+                label = "Hapus",
+                compact = true,
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    onUpdateSettings { it.copy(backgroundMediaUri = "", backgroundMediaIsVideo = false) }
+                }
+            )
+        }
+        if (settings.backgroundMediaUri.isNotBlank()) {
+            Spacer(Modifier.height(4.dp))
+            DsText(
+                text = if (settings.backgroundMediaIsVideo) "Media: video latar aktif" else "Media: gambar latar aktif",
+                size = 10.5.sp,
+                color = p.okEmerald
+            )
         }
 
         Spacer(Modifier.height(10.dp))

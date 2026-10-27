@@ -1,10 +1,14 @@
-# DiStream Studio v4.0 — Real Live Broadcast & Custom Creator Studio
+# DiStream Studio — Real Live Broadcast & Custom Creator Studio
 
-**Aplikasi Mobile Live Streaming & Creator Broadcast Studio Android + Cloud SaaS Platform (`id.distream.studio` • `v4.0.0`)**
+**Aplikasi Mobile Live Streaming & Creator Broadcast Studio Android + Cloud SaaS Platform**
+(`id.distream.studio` • `v4.2.1`)
 
-- **Live Production Cloud & Interactive Web Studio:** [https://distream-studio-cloud.vercel.app](https://distream-studio-cloud.vercel.app)
+- **Cloud API (aktif):** [https://distream-studio-cloud.dikanjut.workers.dev](https://distream-studio-cloud.dikanjut.workers.dev)
 - **GitHub Pages Mirror:** [https://xykal.github.io/distream-studio/](https://xykal.github.io/distream-studio/)
-- **Signed Android Release APK (`v4.0.0`):** Tersedia langsung pada tab [GitHub Releases (`v4.0.0`)](https://github.com/xykal/distream-studio/releases/tag/v4.0.0)
+- **Signed Android Release APK:** tab [GitHub Releases](https://github.com/xykal/distream-studio/releases)
+
+> **Brand:** nama produk resmi hanya **DiStream Studio** (`id.distream.studio`). Tidak ada nama
+> merek pihak ketiga yang dipakai. Penamaan berkas rilis memakai awalan `DiStream-Studio-`.
 
 ---
 
@@ -78,7 +82,7 @@ request apa pun. Backend dipindahkan ke Cloudflare Workers tanpa mengubah logika
 
 ### Klip kilat 30 detik (implementasi nyata)
 - Sebelumnya hanya menambah counter. Sekarang benar-benar merekam 30 detik ke
-  `StreamingIn_Klip30s_<timestamp>.mp4` sambil stream tetap jalan.
+  `DiStream_Klip30s_<timestamp>.mp4` sambil stream tetap jalan.
 - Dinamai "klip kilat" (rekam 30 detik ke depan), bukan replay buffer ke belakang.
 
 ### Relay donasi realtime di Cloudflare Workers

@@ -1,7 +1,7 @@
 /**
  * Durable Object: ruang relay event realtime per room (pengganti WebSocketServer Node).
  *
- * Dipakai backend DiStream/Streaming In di Cloudflare Workers supaya alert donasi
+ * Dipakai backend DiStream Studio di Cloudflare Workers supaya alert donasi
  * (Saweria / Sociabuzz / BagiBagi) tetap sampai ke aplikasi saat backend tidak lagi
  * berjalan di VPS/Vercel.
  *
@@ -59,7 +59,7 @@ export class RoomRelay {
         server.send(
           JSON.stringify({
             event: "system",
-            data: { nickname: "Streaming In", comment: "Relay realtime tersambung" }
+            data: { nickname: "DiStream Studio", comment: "Relay realtime tersambung" }
           })
         );
       } catch {

@@ -1,5 +1,5 @@
 /**
- * Cloudflare Worker entry untuk DiStream / Streaming In backend.
+ * Cloudflare Worker entry untuk backend DiStream Studio.
  *
  * Backend aslinya ditulis sebagai handler gaya Node (req, res) untuk Vercel Serverless.
  * File ini menjembatani Fetch API milik Workers ke handler tersebut, sehingga SATU
@@ -22,7 +22,7 @@ const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
 const STATUS_PAGE = `<!DOCTYPE html>
 <html lang="id"><head><meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Streaming In — Cloud API</title>
+<title>DiStream Studio — Cloud API</title>
 <style>
   body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0B0D12;color:#E5E7EB;
        font-family:system-ui,-apple-system,sans-serif}
@@ -33,7 +33,7 @@ const STATUS_PAGE = `<!DOCTYPE html>
   ul{font-size:13px;color:#9CA3AF;line-height:1.9;padding-left:18px;margin:12px 0 0}
 </style></head>
 <body><main>
-  <h1>Streaming In — Cloud API</h1>
+  <h1>DiStream Studio — Cloud API</h1>
   <p>Layanan backend aktif di Cloudflare Workers.</p>
   <ul>
     <li><code>GET /api/health</code></li>

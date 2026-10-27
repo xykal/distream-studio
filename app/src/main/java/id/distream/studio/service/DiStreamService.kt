@@ -520,7 +520,7 @@ class DiStreamService : LifecycleService(), ConnectChecker {
 
         val moviesDir = getExternalFilesDir(Environment.DIRECTORY_MOVIES) ?: filesDir
         val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val outFile = File(moviesDir, "StreamingIn_Klip30s_$stamp.mp4")
+        val outFile = File(moviesDir, "DiStream_Klip30s_$stamp.mp4")
 
         // Signature asli RootEncoder 2.8.1:
         //   startRecord(path: String, tracks: RecordTracks? = null, listener: RecordController.Listener)
@@ -628,7 +628,7 @@ class DiStreamService : LifecycleService(), ConnectChecker {
                 delay(350)
                 val moviesDir = getExternalFilesDir(Environment.DIRECTORY_MOVIES) ?: filesDir
                 val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-                val outFile = File(moviesDir, "StreamingIn_Replay${seconds}s_$stamp.mp4")
+                val outFile = File(moviesDir, "DiStream_Replay${seconds}s_$stamp.mp4")
                 val ok = Mp4TailTrimmer.trimTail(bufferFile, outFile, seconds * 1000L)
                 outFile to ok
             }

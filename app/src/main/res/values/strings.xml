@@ -1,6 +1,6 @@
 <resources>
-    <string name="app_name">Streaming In</string>
-    <string name="notification_channel_name">Streaming In Broadcast Engine</string>
-    <string name="notification_live_title">Streaming In — Siaran Aktif</string>
+    <string name="app_name">DiStream Studio</string>
+    <string name="notification_channel_name">DiStream Studio Broadcast Engine</string>
+    <string name="notification_live_title">DiStream Studio — Siaran Aktif</string>
     <string name="notification_live_desc">Video, Audio Mixer, SoundFX &amp; Proteksi Privasi berjalan di latar belakang</string>
 </resources>

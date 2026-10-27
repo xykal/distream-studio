@@ -87,6 +87,36 @@ request apa pun. Backend dipindahkan ke Cloudflare Workers tanpa mengubah logika
 - Aplikasi kini default ke `wss://distream-studio-cloud.dikanjut.workers.dev/ws`.
 - Perbaikan bug lama: nilai donasi dibagi 1000 sehingga estimasi pendapatan user 1000x lebih kecil.
 
+## Pembaruan v4.2.0 (Editor Transform + Replay Buffer)
+
+### Geser & cubit sumber di kanvas (setara drag/scale Source di OBS)
+- Satu jari = geser, **dua jari = cubit** untuk skala — berlaku untuk media latar, goal bar,
+  tap love, subathon, facecam PiP, dan widget teks.
+- **Snap otomatis** ke tepi kiri / tengah / kanan-kanvas supaya layout rapi tanpa mikir koordinat.
+- Media latar (gambar/video) akhirnya **tampil di preview kanvas**, bukan cuma di hasil siaran.
+
+### Transform media latar ikut ke siaran
+- `backgroundXPercent` / `backgroundYPercent` / `backgroundScale` / `backgroundFitCenter`
+  disimpan di DataStore dan diterapkan lewat `SceneCompositor.updateBackgroundTransform()`.
+- Dua mode bingkai: **Cover** (isi penuh, terpotong) dan **Fit** (utuh, letterbox).
+- Ganti file media saat live tidak perlu restart siaran — cukup sumbernya dimuat ulang.
+
+### Replay Buffer asli (bukan klip ke depan)
+- Rekaman berjalan terus ke cache selama siaran (di-rotate tiap 3 menit agar hemat disk).
+- Tekan **Simpan N detik terakhir** → hanya potongan ekor yang disalin ke MP4 baru
+  (`Mp4TailTrimmer`: `MediaExtractor` → `MediaMuxer`, mulai dari keyframe terdekat).
+- Jendela bisa dipilih 15 / 30 / 60 / 120 detik, dan buffer langsung jalan lagi setelah menyimpan.
+- Beda dengan **Klip Kilat 30s** yang merekam 30 detik *ke depan*.
+
+### Mixer audio per sumber
+- Fader terpisah: mikrofon (boost), audio internal game, SoundFX deck, dan media latar.
+- Mute media latar independen. Catatan jujur: audio `MediaPlayer` latar hanya terdengar di
+  speaker HP — **tidak dirutekan ke RTMP** karena `MixAudioSource` hanya menerima mic + audio internal.
+
+### Perbaikan
+- URL relay donasi lama (`…vercel.app`, sudah mati) otomatis dimigrasikan ke relay Workers
+  lewat `normalizeRelayUrl()` saat settings dibaca.
+
 ## Struktur Proyek
 
 - `app/` — Aplikasi Android Native Kotlin (`compileSdk = 36`, `minSdk = 29`, `RootEncoder 2.8.1`, `CameraX`, `ZXing 3.5.3`, Custom Studio UI).

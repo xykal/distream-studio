@@ -1,6 +1,7 @@
 package id.distream.studio
 
 import id.distream.studio.audio.ProBroadcastDspEffect
+import id.distream.studio.data.normalizeRelayUrl
 import id.distream.studio.audio.SoundFxSynthesizer
 import id.distream.studio.model.SaasPlanTier
 import id.distream.studio.model.SoundFxPad
@@ -219,5 +220,40 @@ class DiStreamComprehensiveTest {
         )
         assertEquals(256, matrix.width)
         assertEquals(256, matrix.height)
+    }
+
+    @Test
+    fun `relay donasi lama di Vercel otomatis dipindah ke relay Workers yang hidup`() {
+        val fallback = StreamSettings().chatWebSocketUrl
+        assertTrue(fallback.startsWith("wss://"))
+
+        // Alamat mati (Vercel DEPLOYMENT_DISABLED) tidak boleh dipakai lagi.
+        assertEquals(fallback, normalizeRelayUrl("wss://distream-studio-cloud.vercel.app/"))
+        assertEquals(fallback, normalizeRelayUrl("  "))
+        assertEquals(fallback, normalizeRelayUrl("http://contoh.com/ws"))
+
+        // Host Workers tanpa path /ws harus dilengkapi otomatis.
+        assertEquals(
+            "wss://relay.contoh.workers.dev/ws",
+            normalizeRelayUrl("wss://relay.contoh.workers.dev")
+        )
+        // URL custom yang sudah benar dibiarkan apa adanya.
+        assertEquals(
+            "wss://relay.contoh.workers.dev/ws",
+            normalizeRelayUrl("wss://relay.contoh.workers.dev/ws")
+        )
+    }
+
+    @Test
+    fun `sumber media latar punya transform default dan jendela replay buffer masuk akal`() {
+        val defaults = StreamSettings()
+        assertEquals(0f, defaults.backgroundXPercent)
+        assertEquals(0f, defaults.backgroundYPercent)
+        assertEquals(1f, defaults.backgroundScale)
+        assertTrue(defaults.backgroundMediaMuted)
+        assertEquals(30, defaults.replayBufferSeconds)
+
+        // Batas pemakaian di UI: klip 15-120 detik, skala 45-260%.
+        assertTrue(listOf(15, 30, 60, 120).contains(defaults.replayBufferSeconds))
     }
 }

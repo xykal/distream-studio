@@ -12,7 +12,11 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,7 +38,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +49,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -66,6 +73,14 @@ import id.distream.studio.model.StreamRuntimeState
 import id.distream.studio.model.StreamSettings
 import id.distream.studio.model.StudioScene
 import id.distream.studio.ui.theme.LocalDiStreamPalette
+import android.graphics.BitmapFactory
+import android.media.MediaPlayer
+import android.net.Uri
+import android.view.Surface
+import android.view.TextureView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private fun parseColorSafe(hex: String, fallback: Color = Color(0xFF3B82F6)): Color =
@@ -133,6 +148,85 @@ private fun HardwareCameraSurface(
         factory = { previewView },
         modifier = modifier
     )
+}
+
+/**
+ * Pratinjau sumber media latar di kanvas editor — pantulan dari lapisan yang sama
+ * di `SceneCompositor`, supaya apa yang digeser di sini sama dengan hasil siaran.
+ */
+@Composable
+private fun BackgroundMediaPreview(
+    uriString: String,
+    isVideo: Boolean,
+    fitCenter: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    if (isVideo) {
+        val textureView = remember { TextureView(context) }
+        DisposableEffect(uriString) {
+            val player = MediaPlayer()
+            runCatching {
+                player.setDataSource(context, Uri.parse(uriString))
+                player.isLooping = true
+                player.setVolume(0f, 0f)
+                if (textureView.isAvailable) {
+                    player.setSurface(Surface(textureView.surfaceTexture))
+                } else {
+                    textureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                        override fun onSurfaceTextureAvailable(
+                            st: android.graphics.SurfaceTexture,
+                            w: Int,
+                            h: Int
+                        ) {
+                            runCatching { player.setSurface(Surface(st)) }
+                        }
+
+                        override fun onSurfaceTextureSizeChanged(
+                            st: android.graphics.SurfaceTexture,
+                            w: Int,
+                            h: Int
+                        ) = Unit
+
+                        override fun onSurfaceTextureDestroyed(
+                            st: android.graphics.SurfaceTexture
+                        ): Boolean = true
+
+                        override fun onSurfaceTextureUpdated(st: android.graphics.SurfaceTexture) = Unit
+                    }
+                }
+                player.setOnPreparedListener { it.start() }
+                player.prepareAsync()
+            }.onFailure { runCatching { player.release() } }
+            onDispose {
+                runCatching { if (player.isPlaying) player.stop() }
+                runCatching { player.release() }
+            }
+        }
+        AndroidView(factory = { textureView }, modifier = modifier)
+        return
+    }
+
+    val bitmap by produceState<android.graphics.Bitmap?>(initialValue = null, uriString) {
+        value = withContext(Dispatchers.IO) {
+            runCatching {
+                context.contentResolver.openInputStream(Uri.parse(uriString))?.use { stream ->
+                    BitmapFactory.decodeStream(stream)
+                }
+            }.getOrNull()
+        }
+    }
+    val bmp = bitmap
+    if (bmp == null) {
+        Box(modifier = modifier.background(Color(0xFF111827)))
+    } else {
+        Image(
+            bitmap = bmp.asImageBitmap(),
+            contentDescription = "Media latar",
+            contentScale = if (fitCenter) ContentScale.Fit else ContentScale.Crop,
+            modifier = modifier
+        )
+    }
 }
 
 /**
@@ -308,6 +402,37 @@ fun LiveStudioCanvasStage(
                     }
                 }
 
+                // Layer -1: Sumber media latar (gambar/video) — bisa digeser & dicubit di kanvas.
+                if (settings.backgroundMediaUri.isNotBlank() &&
+                    settings.activeScene != StudioScene.PRIVACY_SHIELD
+                ) {
+                    val density = LocalDensity.current
+                    DraggableCanvasNode(
+                        nodeId = "BG",
+                        selectedId = selectedLayerId,
+                        xPercent = settings.backgroundXPercent,
+                        yPercent = settings.backgroundYPercent,
+                        scale = settings.backgroundScale,
+                        stageW = stageW,
+                        stageH = stageH,
+                        accentColor = frameAccent,
+                        onSelect = { selectedLayerId = "BG" },
+                        onDrag = { nx, ny ->
+                            onUpdateSettings { it.copy(backgroundXPercent = nx, backgroundYPercent = ny) }
+                        },
+                        onScale = { sc -> onUpdateSettings { it.copy(backgroundScale = sc) } }
+                    ) {
+                        BackgroundMediaPreview(
+                            uriString = settings.backgroundMediaUri,
+                            isVideo = settings.backgroundMediaIsVideo,
+                            fitCenter = settings.backgroundFitCenter,
+                            modifier = with(density) {
+                                Modifier.size(stageW.toDp(), stageH.toDp())
+                            }
+                        )
+                    }
+                }
+
                 // Grid 3x3 & Safe Zone Guide TikTok
                 if (settings.showGridGuide || settings.showSafeZoneGuide) {
                     Canvas(modifier = Modifier.fillMaxSize()) {
@@ -361,7 +486,8 @@ fun LiveStudioCanvasStage(
                             onSelect = { selectedLayerId = "GOAL" },
                             onDrag = { nx, ny ->
                                 onUpdateSettings { it.copy(goalXPercent = nx, goalYPercent = ny) }
-                            }
+                            },
+                            onScale = { sc -> onUpdateSettings { it.copy(goalScale = sc) } }
                         ) {
                             val pct = (settings.goalCurrent.toFloat() / settings.goalTarget.coerceAtLeast(1))
                                 .coerceIn(0f, 1f)
@@ -414,7 +540,8 @@ fun LiveStudioCanvasStage(
                             onSelect = { selectedLayerId = "LOVE" },
                             onDrag = { nx, ny ->
                                 onUpdateSettings { it.copy(loveXPercent = nx, loveYPercent = ny) }
-                            }
+                            },
+                            onScale = { sc -> onUpdateSettings { it.copy(loveScale = sc) } }
                         ) {
                             val mainTxt = when (settings.loveTapPreset) {
                                 LoveTapPreset.TAP_LOVE_PILL -> "Tap-Tap Love"
@@ -465,7 +592,8 @@ fun LiveStudioCanvasStage(
                             onSelect = { selectedLayerId = "SUBATHON" },
                             onDrag = { nx, ny ->
                                 onUpdateSettings { it.copy(subathonXPercent = nx, subathonYPercent = ny) }
-                            }
+                            },
+                            onScale = { sc -> onUpdateSettings { it.copy(subathonScale = sc) } }
                         ) {
                             val s = runtimeState.subathonSecondsLeft
                             val formatted = String.format("%02d:%02d:%02d", s / 3600, (s % 3600) / 60, s % 60)
@@ -495,7 +623,8 @@ fun LiveStudioCanvasStage(
                             onSelect = { selectedLayerId = "FACECAM" },
                             onDrag = { nx, ny ->
                                 onUpdateSettings { it.copy(facecamXPercent = nx, facecamYPercent = ny) }
-                            }
+                            },
+                            onScale = { sc -> onUpdateSettings { it.copy(facecamScale = sc) } }
                         ) {
                             Box(
                                 modifier = Modifier
@@ -665,13 +794,19 @@ fun LiveStudioCanvasStage(
             horizontalArrangement = Arrangement.spacedBy(5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            listOf(
-                "GOAL" to "Target Gift",
-                "LOVE" to "Tap Love",
-                "SUBATHON" to "Subathon",
-                "FACECAM" to "Facecam PiP",
-                "TICKER" to "Running Text"
-            ).forEach { (id, title) ->
+            val pills = buildList {
+                if (settings.backgroundMediaUri.isNotBlank()) add("BG" to "Media Latar")
+                addAll(
+                    listOf(
+                        "GOAL" to "Target Gift",
+                        "LOVE" to "Tap Love",
+                        "SUBATHON" to "Subathon",
+                        "FACECAM" to "Facecam PiP",
+                        "TICKER" to "Running Text"
+                    )
+                )
+            }
+            pills.forEach { (id, title) ->
                 DsButton(
                     label = title,
                     compact = true,
@@ -752,6 +887,55 @@ private fun SelectedLayerInspector(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         when {
+            selectedLayerId == "BG" -> {
+                DsFader(
+                    label = "Skala Media Latar (atau cubit dua jari langsung di kanvas)",
+                    value = settings.backgroundScale,
+                    valueRange = 0.45f..2.6f,
+                    formattedValue = "${(settings.backgroundScale * 100).roundToInt()}%",
+                    onValueChange = { sc -> onUpdateSettings { it.copy(backgroundScale = sc) } }
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    DsButton(
+                        label = if (settings.backgroundFitCenter) "Muat Pas (Fit)" else "Isi Penuh (Cover)",
+                        compact = true,
+                        active = settings.backgroundFitCenter,
+                        onClick = { onUpdateSettings { it.copy(backgroundFitCenter = !it.backgroundFitCenter) } }
+                    )
+                    DsButton(
+                        label = "Reset Posisi",
+                        compact = true,
+                        onClick = {
+                            onUpdateSettings {
+                                it.copy(
+                                    backgroundXPercent = 0f,
+                                    backgroundYPercent = 0f,
+                                    backgroundScale = 1f
+                                )
+                            }
+                        }
+                    )
+                    DsButton(
+                        label = "Hapus Media",
+                        compact = true,
+                        variant = DsBtnVariant.LIVE_DANGER,
+                        onClick = {
+                            onUpdateSettings {
+                                it.copy(backgroundMediaUri = "", backgroundMediaIsVideo = false)
+                            }
+                        }
+                    )
+                }
+                DsText(
+                    "Geser satu jari untuk pindah, cubit dua jari untuk skala. Media latar tampil " +
+                        "di belakang semua widget.",
+                    size = 10.5.sp,
+                    color = p.textMuted
+                )
+            }
             selectedLayerId == "GOAL" -> {
                 DsFader(
                     label = "Ukuran Widget Target Gift (Geser langsung di kanvas untuk pindah posisi)",
@@ -889,6 +1073,15 @@ private fun SceneBackdropBox(
 }
 
 @Composable
+/** Magic snap: elemen "nempel" ke tepi kiri, tengah, atau kanan kanvas. Setara snap di OBS. */
+private fun snapAxis(value: Float, anchors: FloatArray, tolerance: Float = 1.6f): Float {
+    anchors.forEach { a -> if (abs(value - a) <= tolerance) return a }
+    return value
+}
+
+private val SNAP_X = floatArrayOf(2f, 50f, 84f)
+private val SNAP_Y = floatArrayOf(2f, 50f, 92f)
+
 private fun DraggableCanvasNode(
     nodeId: String,
     selectedId: String,
@@ -900,12 +1093,12 @@ private fun DraggableCanvasNode(
     accentColor: Color,
     onSelect: () -> Unit,
     onDrag: (Float, Float) -> Unit,
+    onScale: ((Float) -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
     val latestX by rememberUpdatedState(xPercent)
     val latestY by rememberUpdatedState(yPercent)
-    var dragAccumX by remember { mutableFloatStateOf(0f) }
-    var dragAccumY by remember { mutableFloatStateOf(0f) }
+    val latestScale by rememberUpdatedState(scale)
     val isSelected = nodeId == selectedId
 
     val pxX = ((xPercent / 100f) * stageW).roundToInt()
@@ -926,22 +1119,34 @@ private fun DraggableCanvasNode(
                 }
             )
             .clickable { onSelect() }
-            .pointerInput(nodeId, stageW, stageH) {
-                detectDragGestures(
-                    onDragStart = {
-                        onSelect()
-                        dragAccumX = latestX
-                        dragAccumY = latestY
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        dragAccumX = (dragAccumX + (dragAmount.x / stageW.coerceAtLeast(1)) * 100f)
-                            .coerceIn(1f, 84f)
-                        dragAccumY = (dragAccumY + (dragAmount.y / stageH.coerceAtLeast(1)) * 100f)
-                            .coerceIn(2f, 92f)
-                        onDrag(dragAccumX, dragAccumY)
+            // Satu jari = geser, dua jari = cubit untuk skala (persis drag & scale di OBS).
+            .pointerInput(nodeId, stageW, stageH, onScale != null) {
+                awaitEachGesture {
+                    // Nilai awal dibaca ulang setiap gesture supaya tidak "liar" setelah reset.
+                    var accX = latestX
+                    var accY = latestY
+                    var accScale = latestScale
+                    awaitFirstDown(requireUnconsumed = false)
+                    onSelect()
+                    var event = awaitPointerEvent()
+                    while (event.changes.any { it.pressed }) {
+                        val pan = event.calculatePan()
+                        val zoom = event.calculateZoom()
+                        if (pan != Offset.Zero) {
+                            accX = (accX + (pan.x / stageW.coerceAtLeast(1)) * 100f)
+                                .coerceIn(1f, 84f)
+                            accY = (accY + (pan.y / stageH.coerceAtLeast(1)) * 100f)
+                                .coerceIn(2f, 92f)
+                            onDrag(snapAxis(accX, SNAP_X), snapAxis(accY, SNAP_Y))
+                        }
+                        if (zoom != 1f && onScale != null) {
+                            accScale = (accScale * zoom).coerceIn(0.45f, 2.6f)
+                            onScale.invoke(accScale)
+                        }
+                        event.changes.forEach { it.consume() }
+                        event = awaitPointerEvent()
                     }
-                )
+                }
             }
     ) {
         content()

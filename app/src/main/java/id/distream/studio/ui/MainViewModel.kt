@@ -295,7 +295,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 facecamXPercent = 64f,
                 facecamYPercent = 58f,
                 facecamScale = 1.0f,
-                tickerYPercent = 91f
+                tickerYPercent = 91f,
+                backgroundXPercent = 0f,
+                backgroundYPercent = 0f,
+                backgroundScale = 1.0f
             )
         }
     }
@@ -349,6 +352,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun saveInstantReplayClip() {
         DiStreamService.INSTANCE?.saveInstantReplayClip()
+    }
+
+    fun toggleReplayBuffer() {
+        DiStreamService.INSTANCE?.toggleReplayBuffer()
+    }
+
+    fun saveReplayBufferClip() {
+        DiStreamService.INSTANCE?.saveReplayBufferClip()
     }
 
     fun triggerPanicBlackout() {

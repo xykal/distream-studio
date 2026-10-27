@@ -85,6 +85,12 @@ class SceneCompositor(private val context: Context) {
     private var backgroundPlayer: MediaPlayer? = null
     private var backgroundVideoUri: Uri? = null
     private var backgroundLooping = true
+    // Transform sumber media latar (setara drag & scale "Source Transform" di OBS).
+    private var bgXPercent = 0f
+    private var bgYPercent = 0f
+    private var bgScale = 1f
+    private var bgVolume = 0f
+    private var bgMuted = true
     // PENTING: init block harus berada SETELAH deklarasi backgroundLayer,
     // karena initializer Kotlin dieksekusi berurutan sesuai posisi di file.
     init {
@@ -241,14 +247,9 @@ class SceneCompositor(private val context: Context) {
             setBackgroundColor(Color.BLACK)
         }
         backgroundImageView = imageView
-        backgroundLayer.addView(
-            imageView,
-            FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-            )
-        )
+        backgroundLayer.addView(imageView, FrameLayout.LayoutParams(1, 1))
         backgroundLayer.visibility = View.VISIBLE
+        applyBackgroundChildLayout()
         return true
     }
 
@@ -265,14 +266,9 @@ class SceneCompositor(private val context: Context) {
         backgroundTexture = texture
         backgroundVideoUri = uri
         backgroundLooping = looping
-        backgroundLayer.addView(
-            texture,
-            FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-            )
-        )
+        backgroundLayer.addView(texture, FrameLayout.LayoutParams(1, 1))
         backgroundLayer.visibility = View.VISIBLE
+        applyBackgroundChildLayout()
 
         texture.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
             override fun onSurfaceTextureAvailable(st: android.graphics.SurfaceTexture, w: Int, h: Int) {
@@ -300,7 +296,10 @@ class SceneCompositor(private val context: Context) {
             player.setSurface(surface)
             player.setDataSource(context, uri)
             player.isLooping = backgroundLooping
-            player.setVolume(0f, 0f) // audio video latar tidak ikut ke mix stream
+            // Audio media latar hanya untuk monitoring di speaker HP: MediaPlayer tidak dirutekan
+            // ke MixAudioSource, jadi TIDAK ikut terkirim ke RTMP penonton.
+            val vol = if (bgMuted) 0f else bgVolume.coerceIn(0f, 1f)
+            player.setVolume(vol, vol)
             player.setOnPreparedListener { it.start() }
             player.prepareAsync()
         }.onFailure { releaseBackgroundPlayer() }
@@ -326,6 +325,55 @@ class SceneCompositor(private val context: Context) {
     fun hasBackgroundMedia(): Boolean = backgroundLayer.visibility == View.VISIBLE
 
     fun isVideoBackground(): Boolean = backgroundTexture != null
+
+    /**
+     * Mengatur posisi (0..100% kanvas) dan skala sumber media latar.
+     * Setara drag + scale sebuah Source di OBS; berlaku untuk gambar maupun video.
+     */
+    fun updateBackgroundTransform(
+        xPercent: Float,
+        yPercent: Float,
+        scale: Float,
+        fitCenter: Boolean = false
+    ) {
+        bgXPercent = xPercent.coerceIn(0f, 90f)
+        bgYPercent = yPercent.coerceIn(0f, 90f)
+        bgScale = scale.coerceIn(0.4f, 3f)
+        backgroundImageView?.scaleType = if (fitCenter) {
+            ImageView.ScaleType.FIT_CENTER
+        } else {
+            ImageView.ScaleType.CENTER_CROP
+        }
+        applyBackgroundChildLayout()
+    }
+
+    /** Volume monitoring lokal untuk video latar (tidak masuk jalur RTMP). */
+    fun setBackgroundVolume(volume: Float, muted: Boolean) {
+        bgVolume = volume.coerceIn(0f, 1f)
+        bgMuted = muted
+        val v = if (muted) 0f else bgVolume
+        runCatching { backgroundPlayer?.setVolume(v, v) }
+    }
+
+    /**
+     * Menata ulang ukuran/posisi anak backgroundLayer sesuai transform.
+     * Dipanggil setiap kali transform berubah maupun saat resolusi kanvas berubah.
+     */
+    private fun applyBackgroundChildLayout() {
+        val sw = stageWidth.coerceAtLeast(1)
+        val sh = stageHeight.coerceAtLeast(1)
+        val w = (sw * bgScale).toInt().coerceAtLeast(1)
+        val h = (sh * bgScale).toInt().coerceAtLeast(1)
+        val left = ((sw - w) * (bgXPercent / 100f)).toInt()
+        val top = ((sh - h) * (bgYPercent / 100f)).toInt()
+        val lp = FrameLayout.LayoutParams(w, h).apply {
+            gravity = Gravity.TOP or Gravity.START
+            leftMargin = left
+            topMargin = top
+        }
+        backgroundImageView?.let { it.layoutParams = lp }
+        backgroundTexture?.let { it.layoutParams = lp }
+    }
 
     private fun decodeSampledBitmap(uri: Uri, targetW: Int, targetH: Int): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -461,6 +509,7 @@ class SceneCompositor(private val context: Context) {
             stageWidth = width
             stageHeight = height
             applyFacecamLayoutParams()
+            applyBackgroundChildLayout()
             updateOffscreenWindowSize()
         }
         val wSpec = View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY)

@@ -12,8 +12,8 @@ android {
         applicationId = "id.distream.studio"
         minSdk = 29
         targetSdk = 35
-        versionCode = 7
-        versionName = "4.1.0"
+        versionCode = 8
+        versionName = "4.2.0"
 
         vectorDrawables {
             useSupportLibrary = true

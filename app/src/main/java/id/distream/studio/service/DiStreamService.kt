@@ -65,6 +65,7 @@ import id.distream.studio.model.VideoCodecOption
 import id.distream.studio.overlay.FloatingHudManager
 import id.distream.studio.saas.SaasSubscriptionManager
 import id.distream.studio.security.StreamKeyVault
+import id.distream.studio.util.Mp4TailTrimmer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -74,6 +75,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -88,6 +90,8 @@ class DiStreamService : LifecycleService(), ConnectChecker {
         private const val CHANNEL_ID = "distream_live_engine"
         private const val NOTIFY_ID = 5120
         private const val CLIP_DURATION_MS = 30_000L
+        /** Replay buffer di-rotate tiap 3 menit supaya file cache tidak membengkak. */
+        private const val REPLAY_ROTATE_MS = 180_000L
 
         @Volatile
         var INSTANCE: DiStreamService? = null
@@ -103,6 +107,7 @@ class DiStreamService : LifecycleService(), ConnectChecker {
     private var textToSpeech: TextToSpeech? = null
     private var ttsReady: Boolean = false
     private var currentSettings: StreamSettings = StreamSettings()
+    private var lastBackgroundSignature: String = ""
     private var sceneBeforeShield: StudioScene = StudioScene.GAMEPLAY
     private var onStreamEndedAutoWipeCallback: (() -> Unit)? = null
 
@@ -110,6 +115,8 @@ class DiStreamService : LifecycleService(), ConnectChecker {
     private var viewFilterRender: ViewFilterRender? = null
     private var uptimeJob: Job? = null
     private var clipJob: Job? = null
+    private var replayBufferFile: File? = null
+    private var replayRotateJob: Job? = null
 
     private val chatBridge = TikTokChatBridge()
 
@@ -502,6 +509,10 @@ class DiStreamService : LifecycleService(), ConnectChecker {
             logSystemEvent("Klip kilat sedang direkam, tunggu selesai")
             return
         }
+        if (_runtimeState.value.isReplayBufferActive) {
+            logSystemEvent("Replay Buffer sedang aktif — matikan dulu (atau tekan Simpan Replay)")
+            return
+        }
         if (genericStream.isRecording) {
             logSystemEvent("Rekaman lokal sedang berjalan — hentikan dulu sebelum membuat klip")
             return
@@ -542,6 +553,134 @@ class DiStreamService : LifecycleService(), ConnectChecker {
         runCatching { if (genericStream.isRecording) genericStream.stopRecord() }
         _runtimeState.update { it.copy(isClipRecording = false) }
         logSystemEvent("Klip kilat dihentikan manual")
+    }
+
+    // ------------------------------------------------------------ Replay Buffer (OBS-like)
+    //
+    // Beda dengan "Klip Kilat 30s" (merekam 30 detik KE DEPAN), Replay Buffer terus merekam
+    // ke file cache selama siaran, jadi saat tombol ditekan yang tersimpan adalah 15-60 detik
+    // TERAKHIR — persis perilaku Replay Buffer di OBS.
+
+    fun toggleReplayBuffer() {
+        if (_runtimeState.value.isReplayBufferActive) {
+            stopReplayBuffer()
+            return
+        }
+        if (!::genericStream.isInitialized || !genericStream.isStreaming) {
+            logSystemEvent("Replay Buffer butuh siaran aktif — mulai live dulu")
+            return
+        }
+        if (_runtimeState.value.isClipRecording) {
+            logSystemEvent("Klip kilat sedang direkam, tunggu selesai dulu")
+            return
+        }
+        if (::genericStream.isInitialized && genericStream.isRecording) {
+            logSystemEvent("Rekaman lokal sedang berjalan — hentikan dulu sebelum mengaktifkan Replay Buffer")
+            return
+        }
+        if (!startReplayBufferRecording()) {
+            logSystemEvent("Gagal mengaktifkan Replay Buffer (encoder sibuk)")
+            return
+        }
+        _runtimeState.update { it.copy(isReplayBufferActive = true) }
+        startReplayRotation()
+        logSystemEvent(
+            "Replay Buffer aktif — ${currentSettings.replayBufferSeconds} detik terakhir siap disimpan"
+        )
+    }
+
+    fun stopReplayBuffer() {
+        replayRotateJob?.cancel()
+        replayRotateJob = null
+        if (::genericStream.isInitialized) {
+            runCatching { if (genericStream.isRecording) genericStream.stopRecord() }
+        }
+        replayBufferFile = null
+        replayBufferDir().listFiles()?.forEach { runCatching { it.delete() } }
+        _runtimeState.update { it.copy(isReplayBufferActive = false) }
+        logSystemEvent("Replay Buffer dimatikan")
+    }
+
+    /**
+     * Menyimpan N detik terakhir dari buffer ke galeri aplikasi, lalu buffer otomatis
+     * dilanjutkan lagi supaya streamer bisa menyimpan momen berikutnya tanpa setel ulang.
+     */
+    fun saveReplayBufferClip() {
+        if (!_runtimeState.value.isReplayBufferActive) {
+            logSystemEvent("Replay Buffer belum aktif")
+            return
+        }
+        if (_runtimeState.value.isReplaySaving) return
+        val bufferFile = replayBufferFile
+        if (bufferFile == null || !bufferFile.exists()) {
+            logSystemEvent("File buffer belum siap, coba lagi sebentar")
+            return
+        }
+        replayRotateJob?.cancel()
+        replayRotateJob = null
+        _runtimeState.update { it.copy(isReplaySaving = true) }
+
+        lifecycleScope.launch(Dispatchers.Main) {
+            runCatching { if (genericStream.isRecording) genericStream.stopRecord() }
+            val seconds = currentSettings.replayBufferSeconds.coerceIn(10, 120)
+            val result = withContext(Dispatchers.IO) {
+                // beri waktu muxer menyelesaikan tulisan terakhir sebelum dibaca
+                delay(350)
+                val moviesDir = getExternalFilesDir(Environment.DIRECTORY_MOVIES) ?: filesDir
+                val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                val outFile = File(moviesDir, "StreamingIn_Replay${seconds}s_$stamp.mp4")
+                val ok = Mp4TailTrimmer.trimTail(bufferFile, outFile, seconds * 1000L)
+                outFile to ok
+            }
+            val (outFile, ok) = result
+            if (ok) {
+                _runtimeState.update { it.copy(replayClipsSaved = it.replayClipsSaved + 1) }
+                logSystemEvent("Replay ${seconds}s tersimpan: ${outFile.name} (${outFile.length() / 1024} KB)")
+            } else {
+                logSystemEvent("Gagal memotong replay (buffer terlalu pendek atau korup)")
+            }
+            _runtimeState.update { it.copy(isReplaySaving = false) }
+            // lanjutkan buffer baru
+            if (_runtimeState.value.isReplayBufferActive) {
+                if (startReplayBufferRecording()) startReplayRotation() else {
+                    _runtimeState.update { it.copy(isReplayBufferActive = false) }
+                    logSystemEvent("Replay Buffer berhenti karena encoder menolak rekaman baru")
+                }
+            }
+        }
+    }
+
+    private fun replayBufferDir(): File =
+        File(cacheDir, "replay_buffer").apply { mkdirs() }
+
+    private fun startReplayBufferRecording(): Boolean {
+        val dir = replayBufferDir()
+        dir.listFiles()?.forEach { runCatching { it.delete() } }
+        val file = File(dir, "buffer_${System.currentTimeMillis()}.mp4")
+        val started = runCatching {
+            genericStream.startRecord(file.absolutePath) { }
+        }.isSuccess
+        if (started) replayBufferFile = file
+        return started
+    }
+
+    private fun startReplayRotation() {
+        replayRotateJob?.cancel()
+        replayRotateJob = lifecycleScope.launch(Dispatchers.Main) {
+            while (isActive) {
+                delay(REPLAY_ROTATE_MS)
+                if (!_runtimeState.value.isReplayBufferActive) break
+                if (_runtimeState.value.isReplaySaving) continue
+                runCatching { if (genericStream.isRecording) genericStream.stopRecord() }
+                val previous = replayBufferFile
+                if (!startReplayBufferRecording()) {
+                    _runtimeState.update { it.copy(isReplayBufferActive = false) }
+                    logSystemEvent("Replay Buffer berhenti: encoder tidak bisa mulai rekaman baru")
+                    break
+                }
+                previous?.let { old -> runCatching { if (old != replayBufferFile) old.delete() } }
+            }
+        }
     }
 
     fun triggerPanicBlackout() {
@@ -720,11 +859,24 @@ class DiStreamService : LifecycleService(), ConnectChecker {
         val ok = if (settings.backgroundMediaIsVideo) {
             sceneCompositor.setBackgroundVideo(uri, looping = true)
         } else {
-            sceneCompositor.setBackgroundImage(uri, fitCenter = true)
+            sceneCompositor.setBackgroundImage(uri, fitCenter = settings.backgroundFitCenter)
         }
         if (!ok) {
             logSystemEvent("Sumber media latar gagal dimuat (${uri.take(48)}…) — memakai slate bawaan")
+            return
         }
+        applyBackgroundTransform(settings)
+    }
+
+    /** Menerapkan posisi/skala/volume media latar tanpa perlu rebuild pipeline GL. */
+    private fun applyBackgroundTransform(settings: StreamSettings) {
+        sceneCompositor.updateBackgroundTransform(
+            xPercent = settings.backgroundXPercent,
+            yPercent = settings.backgroundYPercent,
+            scale = settings.backgroundScale,
+            fitCenter = settings.backgroundFitCenter
+        )
+        sceneCompositor.setBackgroundVolume(settings.backgroundMediaVolume, settings.backgroundMediaMuted)
     }
 
     /**
@@ -760,11 +912,22 @@ class DiStreamService : LifecycleService(), ConnectChecker {
         )
     }
 
+    /** Sidik jari transform media latar, dipakai agar tidak menata ulang View tiap perubahan settings. */
+    private fun backgroundSignature(s: StreamSettings): String =
+        "${s.backgroundMediaUri}|${s.backgroundMediaIsVideo}|${s.backgroundXPercent}|" +
+            "${s.backgroundYPercent}|${s.backgroundScale}|${s.backgroundFitCenter}|" +
+            "${s.backgroundMediaVolume}|${s.backgroundMediaMuted}"
+
     fun syncLiveSettings(updated: StreamSettings) {
         val rebuildNeeded = currentSettings.colorGrade != updated.colorGrade ||
             currentSettings.overlayMasterEnabled != updated.overlayMasterEnabled ||
             currentSettings.primaryOverlayUrl != updated.primaryOverlayUrl ||
             currentSettings.secondaryOverlayUrl != updated.secondaryOverlayUrl
+
+        // Ganti file media latar saat live: cukup muat ulang sumbernya, tidak perlu rebuild GL.
+        val backgroundSourceChanged =
+            currentSettings.backgroundMediaUri != updated.backgroundMediaUri ||
+                currentSettings.backgroundMediaIsVideo != updated.backgroundMediaIsVideo
 
         currentSettings = updated
         dspEffect.noiseGateEnabled = updated.noiseGateEnabled
@@ -774,6 +937,16 @@ class DiStreamService : LifecycleService(), ConnectChecker {
         if (audioSrc is MixAudioSource) {
             audioSrc.microphoneVolume = updated.micGain
             audioSrc.internalVolume = updated.gameGain
+        }
+
+        // Transform media latar tidak butuh rebuild filter chain — cukup geser View-nya.
+        val bgSignature = backgroundSignature(updated)
+        if (backgroundSourceChanged && !rebuildNeeded) {
+            applyBackgroundMedia(updated)
+        }
+        if (bgSignature != lastBackgroundSignature) {
+            lastBackgroundSignature = bgSignature
+            applyBackgroundTransform(updated)
         }
 
         if (rebuildNeeded) {
@@ -948,6 +1121,8 @@ class DiStreamService : LifecycleService(), ConnectChecker {
     fun stopBroadcast() {
         uptimeJob?.cancel()
         stopAllSoundFx()
+        // Replay buffer wajib dimatikan sebelum encoder berhenti, kalau tidak file cache menggantung.
+        if (_runtimeState.value.isReplayBufferActive) stopReplayBuffer()
         if (genericStream.isRecording) genericStream.stopRecord()
         if (genericStream.isStreaming) genericStream.stopStream()
         mediaProjection?.stop()

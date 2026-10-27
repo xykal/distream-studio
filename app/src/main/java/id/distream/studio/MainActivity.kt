@@ -128,6 +128,8 @@ class MainActivity : ComponentActivity() {
                     onDismissOrder = viewModel::dismissPendingOrder,
                     onRedeemLicenseToken = viewModel::redeemManualLicenseToken,
                     onSaveReplayClip = viewModel::saveInstantReplayClip,
+                    onToggleReplayBuffer = viewModel::toggleReplayBuffer,
+                    onSaveReplayBuffer = viewModel::saveReplayBufferClip,
                     onAddCustomText = viewModel::addCustomTextLayer,
                     onUpdateCustomText = viewModel::updateCustomTextLayer,
                     onDeleteCustomText = viewModel::removeCustomTextLayer,

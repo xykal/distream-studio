@@ -241,6 +241,15 @@ data class StreamSettings(
      */
     val backgroundMediaUri: String = "",
     val backgroundMediaIsVideo: Boolean = false,
+    // Transform sumber media latar (setara Alt+Drag / S di OBS): posisi 0..100% + skala.
+    val backgroundXPercent: Float = 0f,
+    val backgroundYPercent: Float = 0f,
+    val backgroundScale: Float = 1.0f,
+    /** true = FIT (letterbox, seluruh gambar kelihatan), false = COVER (penuhi kanvas, terpotong). */
+    val backgroundFitCenter: Boolean = false,
+    /** Volume media latar — hanya untuk monitoring di speaker HP; audio MediaPlayer TIDAK masuk RTMP. */
+    val backgroundMediaVolume: Float = 0.0f,
+    val backgroundMediaMuted: Boolean = true,
 
     val showSafeZoneGuide: Boolean = true,
     val showGridGuide: Boolean = false,
@@ -310,6 +319,9 @@ data class StreamSettings(
     val facecamSizeIndex: Int = 1,
     val hudOpacityPercent: Int = 92,
 
+    /** Panjang jendela Replay Buffer (detik terakhir yang disimpan saat tombol ditekan). */
+    val replayBufferSeconds: Int = 30,
+
     // Audio & SoundFX
     val audioMode: AudioCaptureMode = AudioCaptureMode.MIX_GAME_AND_MIC,
     val micGain: Float = 2.0f,
@@ -369,6 +381,8 @@ data class StreamRuntimeState(
     val estimatedIdrRevenue: Long = 0L,
     val replayClipsSaved: Int = 0,
     val isClipRecording: Boolean = false,
+    val isReplayBufferActive: Boolean = false,
+    val isReplaySaving: Boolean = false,
     val isSimulcastActive: Boolean = false,
     val isCloudFailoverArmed: Boolean = false,
     val hasCongestion: Boolean = false,

@@ -97,6 +97,12 @@ class StreamPreferencesRepository(private val appContext: Context) {
         val TICKER_TEXT = stringPreferencesKey("ticker_text")
         val BACKGROUND_MEDIA_URI = stringPreferencesKey("background_media_uri")
         val BACKGROUND_MEDIA_IS_VIDEO = booleanPreferencesKey("background_media_is_video")
+        val BACKGROUND_X = floatPreferencesKey("background_x")
+        val BACKGROUND_Y = floatPreferencesKey("background_y")
+        val BACKGROUND_SCALE = floatPreferencesKey("background_scale")
+        val BACKGROUND_FIT_CENTER = booleanPreferencesKey("background_fit_center")
+        val BACKGROUND_VOLUME = floatPreferencesKey("background_volume")
+        val BACKGROUND_MUTED = booleanPreferencesKey("background_muted")
         val WATERMARK_VIS = booleanPreferencesKey("watermark_vis")
         val CUSTOM_TEXTS_JSON = stringPreferencesKey("custom_texts_json")
 
@@ -110,6 +116,7 @@ class StreamPreferencesRepository(private val appContext: Context) {
         val MIC_GAIN = floatPreferencesKey("mic_gain")
         val GAME_GAIN = floatPreferencesKey("game_gain")
         val SFX_VOLUME = floatPreferencesKey("sfx_volume")
+        val REPLAY_BUFFER_SECONDS = intPreferencesKey("replay_buffer_seconds")
         val NOISE_GATE = booleanPreferencesKey("noise_gate")
         val VOICE_DUCKING = booleanPreferencesKey("voice_ducking")
         val ECHO_CANCEL = booleanPreferencesKey("echo_cancel")
@@ -166,6 +173,12 @@ class StreamPreferencesRepository(private val appContext: Context) {
             streamTitleHeadline = prefs[Keys.HEADLINE] ?: "Mabar Santai Push Rank Malam Ini",
             backgroundMediaUri = prefs[Keys.BACKGROUND_MEDIA_URI] ?: "",
             backgroundMediaIsVideo = prefs[Keys.BACKGROUND_MEDIA_IS_VIDEO] ?: false,
+            backgroundXPercent = prefs[Keys.BACKGROUND_X] ?: 0f,
+            backgroundYPercent = prefs[Keys.BACKGROUND_Y] ?: 0f,
+            backgroundScale = prefs[Keys.BACKGROUND_SCALE] ?: 1f,
+            backgroundFitCenter = prefs[Keys.BACKGROUND_FIT_CENTER] ?: false,
+            backgroundMediaVolume = prefs[Keys.BACKGROUND_VOLUME] ?: 0f,
+            backgroundMediaMuted = prefs[Keys.BACKGROUND_MUTED] ?: true,
             subathonTimerVisible = prefs[Keys.SUBATHON_VIS] ?: true,
             subathonRemainingSeconds = prefs[Keys.SUBATHON_SEC] ?: 3600,
             goalXPercent = prefs[Keys.GOAL_X] ?: 5f,
@@ -204,6 +217,7 @@ class StreamPreferencesRepository(private val appContext: Context) {
             micGain = prefs[Keys.MIC_GAIN] ?: 2.0f,
             gameGain = prefs[Keys.GAME_GAIN] ?: 1.0f,
             sfxVolume = prefs[Keys.SFX_VOLUME] ?: 0.85f,
+            replayBufferSeconds = prefs[Keys.REPLAY_BUFFER_SECONDS] ?: 30,
             noiseGateEnabled = prefs[Keys.NOISE_GATE] ?: true,
             voiceDuckingEnabled = prefs[Keys.VOICE_DUCKING] ?: true,
             echoCancelerEnabled = prefs[Keys.ECHO_CANCEL] ?: true,
@@ -214,7 +228,9 @@ class StreamPreferencesRepository(private val appContext: Context) {
             profanityChatFilter = prefs[Keys.PROFANITY_FILTER] ?: true,
             dndGuardWarning = prefs[Keys.DND_WARNING] ?: true,
             tiktokUsername = prefs[Keys.TIKTOK_USERNAME] ?: "",
-            chatWebSocketUrl = prefs[Keys.CHAT_WS_URL] ?: "wss://distream-studio-cloud.vercel.app/"
+            chatWebSocketUrl = normalizeRelayUrl(
+                prefs[Keys.CHAT_WS_URL] ?: StreamSettings().chatWebSocketUrl
+            ),
         )
     }
 
@@ -250,6 +266,12 @@ class StreamPreferencesRepository(private val appContext: Context) {
             prefs[Keys.HEADLINE] = s.streamTitleHeadline
             prefs[Keys.BACKGROUND_MEDIA_URI] = s.backgroundMediaUri
             prefs[Keys.BACKGROUND_MEDIA_IS_VIDEO] = s.backgroundMediaIsVideo
+            prefs[Keys.BACKGROUND_X] = s.backgroundXPercent
+            prefs[Keys.BACKGROUND_Y] = s.backgroundYPercent
+            prefs[Keys.BACKGROUND_SCALE] = s.backgroundScale
+            prefs[Keys.BACKGROUND_FIT_CENTER] = s.backgroundFitCenter
+            prefs[Keys.BACKGROUND_VOLUME] = s.backgroundMediaVolume
+            prefs[Keys.BACKGROUND_MUTED] = s.backgroundMediaMuted
             prefs[Keys.SUBATHON_VIS] = s.subathonTimerVisible
             prefs[Keys.SUBATHON_SEC] = s.subathonRemainingSeconds
             prefs[Keys.GOAL_X] = s.goalXPercent
@@ -287,6 +309,7 @@ class StreamPreferencesRepository(private val appContext: Context) {
             prefs[Keys.MIC_GAIN] = s.micGain
             prefs[Keys.GAME_GAIN] = s.gameGain
             prefs[Keys.SFX_VOLUME] = s.sfxVolume
+            prefs[Keys.REPLAY_BUFFER_SECONDS] = s.replayBufferSeconds
             prefs[Keys.NOISE_GATE] = s.noiseGateEnabled
             prefs[Keys.VOICE_DUCKING] = s.voiceDuckingEnabled
             prefs[Keys.ECHO_CANCEL] = s.echoCancelerEnabled
@@ -349,5 +372,26 @@ class StreamPreferencesRepository(private val appContext: Context) {
     private inline fun <reified T : Enum<T>> enumOrDefault(raw: String?, fallback: T): T {
         if (raw.isNullOrBlank()) return fallback
         return runCatching { enumValueOf<T>(raw) }.getOrDefault(fallback)
+    }
+}
+
+/**
+ * Merapikan URL relay donasi tersimpan.
+ *
+ * Alasan: relay lama berjalan di Vercel yang sekarang diblokir (DEPLOYMENT_DISABLED), sehingga
+ * pengguna versi sebelumnya masih menyimpan alamat mati itu di DataStore dan overlay donasi
+ * realtime mereka diam-diam berhenti. Fungsi ini memindahkannya ke relay Workers yang aktif.
+ */
+internal fun normalizeRelayUrl(raw: String): String {
+    val fallback = StreamSettings().chatWebSocketUrl
+    val clean = raw.trim()
+    if (clean.isBlank()) return fallback
+    if (clean.contains("distream-studio-cloud.vercel.app")) return fallback
+    if (!clean.startsWith("ws://") && !clean.startsWith("wss://")) return fallback
+    val trimmed = clean.trimEnd('/')
+    return if (trimmed.contains("workers.dev") && !trimmed.endsWith("/ws")) {
+        "$trimmed/ws"
+    } else {
+        trimmed
     }
 }

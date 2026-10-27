@@ -101,6 +101,8 @@ fun StudioHomeScreen(
     onDismissOrder: () -> Unit,
     onRedeemLicenseToken: (String) -> Unit,
     onSaveReplayClip: () -> Unit,
+    onToggleReplayBuffer: () -> Unit,
+    onSaveReplayBuffer: () -> Unit,
     onAddCustomText: (String) -> Unit,
     onUpdateCustomText: (id: String, content: String?, x: Int?, y: Int?, size: Int?, hex: String?, pill: Boolean?) -> Unit,
     onDeleteCustomText: (String) -> Unit,
@@ -325,6 +327,8 @@ fun StudioHomeScreen(
                         onTestGiftClick = onTestGiftClick,
                         onTestDonationClick = onTestDonationClick,
                         onSaveReplayClip = onSaveReplayClip,
+                        onToggleReplayBuffer = onToggleReplayBuffer,
+                        onSaveReplayBuffer = onSaveReplayBuffer,
                         onToggleRecordClick = onToggleRecordClick,
                         onCaptureSnapshotClick = onCaptureSnapshotClick,
                         onAddMarkerClick = onAddMarkerClick,
@@ -786,6 +790,29 @@ private fun AudioAndSoundFxDeck(
             onValueChange = { v -> onUpdateSettings { it.copy(sfxVolume = v) } }
         )
 
+        Spacer(Modifier.height(8.dp))
+        // Mixer sumber media latar — kontrol terpisah seperti panel Audio Mixer di OBS.
+        DsFader(
+            label = "Volume Media Latar (hanya terdengar di HP, tidak masuk RTMP)",
+            value = settings.backgroundMediaVolume,
+            valueRange = 0f..1f,
+            formattedValue = if (settings.backgroundMediaMuted) {
+                "MUTE"
+            } else {
+                "${(settings.backgroundMediaVolume * 100).roundToInt()}%"
+            },
+            onValueChange = { v ->
+                onUpdateSettings { it.copy(backgroundMediaVolume = v, backgroundMediaMuted = false) }
+            }
+        )
+        Spacer(Modifier.height(6.dp))
+        DsToggle(
+            title = "Bisukan Audio Media Latar",
+            subtitle = "Video latar tetap diputar tanpa suara — cocok untuk backsound diam",
+            checked = settings.backgroundMediaMuted,
+            onCheckedChange = { v -> onUpdateSettings { it.copy(backgroundMediaMuted = v) } }
+        )
+
         Spacer(Modifier.height(10.dp))
         Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
             DsToggle(
@@ -815,6 +842,8 @@ private fun FloatingAndLiveEventDeck(
     onTestGiftClick: () -> Unit,
     onTestDonationClick: () -> Unit,
     onSaveReplayClip: () -> Unit,
+    onToggleReplayBuffer: () -> Unit,
+    onSaveReplayBuffer: () -> Unit,
     onToggleRecordClick: () -> Unit,
     onCaptureSnapshotClick: () -> Unit,
     onAddMarkerClick: () -> Unit,
@@ -920,6 +949,44 @@ private fun FloatingAndLiveEventDeck(
                 modifier = Modifier.weight(1f),
                 onClick = onToggleRecordClick
             )
+        }
+        Spacer(Modifier.height(6.dp))
+        // Replay Buffer ala OBS: rekam terus, simpan N detik TERAKHIR saat tombol ditekan.
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+            DsButton(
+                label = if (runtimeState.isReplayBufferActive) "Replay Buffer ON" else "Replay Buffer OFF",
+                compact = true,
+                active = runtimeState.isReplayBufferActive,
+                modifier = Modifier.weight(1f),
+                onClick = onToggleReplayBuffer
+            )
+            DsButton(
+                label = when {
+                    runtimeState.isReplaySaving -> "Memotong Replay…"
+                    else -> "Simpan ${settings.replayBufferSeconds}s Terakhir"
+                },
+                compact = true,
+                variant = DsBtnVariant.PRIMARY,
+                enabled = runtimeState.isReplayBufferActive && !runtimeState.isReplaySaving,
+                modifier = Modifier.weight(1f),
+                onClick = onSaveReplayBuffer
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DsText("Jendela replay:", size = 10.5.sp, color = p.textMuted)
+            listOf(15, 30, 60, 120).forEach { sec ->
+                DsButton(
+                    label = "${sec}s",
+                    compact = true,
+                    active = settings.replayBufferSeconds == sec,
+                    onClick = { onUpdateSettings { it.copy(replayBufferSeconds = sec) } }
+                )
+            }
         }
         Spacer(Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {

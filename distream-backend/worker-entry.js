@@ -13,6 +13,9 @@
  */
 
 import { createDiStreamHttpHandler } from "./server.js";
+import { RoomRelay } from "./worker-room-do.js";
+
+export { RoomRelay };
 
 const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
 
@@ -38,9 +41,51 @@ const STATUS_PAGE = `<!DOCTYPE html>
     <li><code>POST /api/saas/checkout</code></li>
     <li><code>POST /api/saas/license/verify</code></li>
     <li><code>POST /webhook/donation/:roomToken</code></li>
+    <li><code>GET /ws?room=nama-room</code> (WebSocket relay donasi)</li>
   </ul>
-  <p>WebSocket relay chat/gift TikTok belum tersedia di node ini (butuh Durable Object).</p>
+  <p>Relay donasi realtime aktif via Durable Object. Event chat/gift TikTok belum tersedia di node ini.</p>
 </main></body></html>`;
+
+/**
+ * server.js mem-broadcast event ke Map<room, Set<client>> lalu memanggil client.send().
+ * Di Workers tidak ada state proses, jadi kita sediakan klien palsu yang meneruskan
+ * payload ke Durable Object RoomRelay — logika auth/validasi tetap milik server.js.
+ */
+function createRelayRooms(env) {
+  const rooms = new Map();
+  // Push ke Durable Object bersifat async. Tanpa ditahan, Workers memotong promise
+  // tersebut begitu response dikirim -> event donasi hilang (bug yang tertangkap di tes).
+  const pending = [];
+  const makeForwarder = (room) => ({
+    readyState: 1,
+    OPEN: 1,
+    send(payload) {
+      const ns = env?.ROOMS;
+      if (!ns) return;
+      const stub = ns.get(ns.idFromName(room));
+      pending.push(
+        stub
+          .fetch("https://room-relay/publish", { method: "POST", body: payload })
+          .then((r) => r.text())
+          .catch(() => null)
+      );
+    }
+  });
+  const original = rooms.get.bind(rooms);
+  rooms.get = (key) => {
+    if (!original(key)) rooms.set(key, new Set([makeForwarder(key)]));
+    return original(key);
+  };
+  rooms.set = (key, _value) => {
+    Map.prototype.set.call(rooms, key, new Set([makeForwarder(key)]));
+    return rooms;
+  };
+  const flush = async () => {
+    if (pending.length === 0) return;
+    await Promise.allSettled(pending.splice(0, pending.length));
+  };
+  return { rooms, flush };
+}
 
 function makeNodeStyleRequest(request, url, bodyBuffer) {
   const headers = {};
@@ -119,6 +164,24 @@ export default {
 
     const url = new URL(request.url);
 
+    // Relay realtime (pengganti WebSocketServer Node)
+    if (url.pathname === "/ws") {
+      const room = (url.searchParams.get("room") || url.searchParams.get("uniqueId") || "default")
+        .replace(/^@/, "")
+        .trim()
+        .slice(0, 64);
+      if (!env.ROOMS) {
+        return new Response(JSON.stringify({ error: "Durable Object ROOMS belum di-bind" }), {
+          status: 503,
+          headers: jsonHeaders
+        });
+      }
+      const stub = env.ROOMS.get(env.ROOMS.idFromName(room));
+      const doUrl = new URL("https://room-relay/socket");
+      doUrl.searchParams.set("room", room);
+      return stub.fetch(new Request(doUrl.toString(), request));
+    }
+
     if (url.pathname === "/" || url.pathname === "/index.html") {
       return new Response(STATUS_PAGE, {
         status: 200,
@@ -131,12 +194,17 @@ export default {
       bodyBuffer = await request.arrayBuffer();
     }
 
-    const { handler } = createDiStreamHttpHandler({ enableExternalGatewayCalls: true });
+    const relay = createRelayRooms(env);
+    const { handler } = createDiStreamHttpHandler({
+      enableExternalGatewayCalls: true,
+      rooms: relay.rooms
+    });
     const req = makeNodeStyleRequest(request, url, bodyBuffer);
     const res = makeNodeStyleResponse();
 
     try {
       await handler(req, res);
+      await relay.flush(); // pastikan event realtime benar-benar terkirim ke Durable Object
     } catch (err) {
       return new Response(
         JSON.stringify({ error: err?.message || "Worker handler error" }),

@@ -87,6 +87,7 @@ class DiStreamService : LifecycleService(), ConnectChecker {
     companion object {
         private const val CHANNEL_ID = "distream_live_engine"
         private const val NOTIFY_ID = 5120
+        private const val CLIP_DURATION_MS = 30_000L
 
         @Volatile
         var INSTANCE: DiStreamService? = null
@@ -108,6 +109,7 @@ class DiStreamService : LifecycleService(), ConnectChecker {
     private val sceneCompositor by lazy { SceneCompositor(applicationContext) }
     private var viewFilterRender: ViewFilterRender? = null
     private var uptimeJob: Job? = null
+    private var clipJob: Job? = null
 
     private val chatBridge = TikTokChatBridge()
 
@@ -483,15 +485,63 @@ class DiStreamService : LifecycleService(), ConnectChecker {
         _runtimeState.update { it.copy(isCensorBeepActive = active) }
     }
 
+    /**
+     * Klip kilat 30 detik — IMPLEMENTASI NYATA (sebelumnya hanya menambah counter).
+     *
+     * Merekam 30 detik ke depan ke file MP4 terpisah sambil stream tetap berjalan
+     * (RootEncoder mendukung streaming + recording bersamaan). Dinamai "klip kilat"
+     * agar tidak mengklaim sebagai replay buffer 30 detik ke belakang.
+     */
     fun saveInstantReplayClip() {
         val activeTier = SaasSubscriptionManager.resolveActiveTier(currentSettings)
         if (!activeTier.allowInstantReplayClip) {
-            logSystemEvent("Fitur Replay 30 Detik memerlukan Paket Mingguan atau Bulanan VIP")
+            logSystemEvent("Fitur Klip Kilat 30 Detik memerlukan Paket Mingguan atau Bulanan VIP")
             return
         }
-        val nextCount = _runtimeState.value.replayClipsSaved + 1
-        _runtimeState.update { it.copy(replayClipsSaved = nextCount) }
-        logSystemEvent("Klip Replay Instan 30 detik #$nextCount disimpan untuk konten TikTok")
+        if (clipJob?.isActive == true) {
+            logSystemEvent("Klip kilat sedang direkam, tunggu selesai")
+            return
+        }
+        if (genericStream.isRecording) {
+            logSystemEvent("Rekaman lokal sedang berjalan — hentikan dulu sebelum membuat klip")
+            return
+        }
+
+        val moviesDir = getExternalFilesDir(Environment.DIRECTORY_MOVIES) ?: filesDir
+        val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val outFile = File(moviesDir, "StreamingIn_Klip30s_$stamp.mp4")
+
+        // Signature asli RootEncoder 2.8.1:
+        //   startRecord(path: String, tracks: RecordTracks? = null, listener: RecordController.Listener)
+        val started = runCatching {
+            genericStream.startRecord(outFile.absolutePath) { status ->
+                if (status == RecordController.Status.RECORDING) {
+                    logSystemEvent("Klip kilat mulai direkam (${outFile.name})")
+                }
+            }
+        }.isSuccess
+        if (!started) {
+            logSystemEvent("Gagal memulai klip kilat (encoder sedang sibuk)")
+            return
+        }
+
+        clipJob = lifecycleScope.launch {
+            val nextCount = _runtimeState.value.replayClipsSaved + 1
+            _runtimeState.update { it.copy(replayClipsSaved = nextCount, isClipRecording = true) }
+            logSystemEvent("Klip kilat 30 detik #$nextCount sedang direkam…")
+            delay(CLIP_DURATION_MS)
+            runCatching { if (genericStream.isRecording) genericStream.stopRecord() }
+            _runtimeState.update { it.copy(isClipRecording = false) }
+            logSystemEvent("Klip kilat tersimpan: ${outFile.name} (${outFile.length() / 1024} KB)")
+        }
+    }
+
+    fun stopClipRecording() {
+        clipJob?.cancel()
+        clipJob = null
+        runCatching { if (genericStream.isRecording) genericStream.stopRecord() }
+        _runtimeState.update { it.copy(isClipRecording = false) }
+        logSystemEvent("Klip kilat dihentikan manual")
     }
 
     fun triggerPanicBlackout() {
@@ -553,14 +603,23 @@ class DiStreamService : LifecycleService(), ConnectChecker {
             StudioScene.STARTING_SOON,
             StudioScene.INTERMISSION_BRB,
             StudioScene.PRIVACY_SHIELD -> {
-                val bmp = SceneSlateRenderer.createSlateBitmap(
-                    width = outW,
-                    height = outH,
-                    scene = scene,
-                    headline = currentSettings.streamTitleHeadline,
-                    handle = currentSettings.tiktokUsername
-                )
-                genericStream.changeVideoSource(BitmapSource(bmp))
+                // Bila kreator memasang sumber media (gambar/video), biarkan kompositor yang
+                // menggambar latar tersebut di atas bitmap netral — setara Media Source di OBS.
+                val useMedia = currentSettings.backgroundMediaUri.isNotBlank() &&
+                    scene != StudioScene.PRIVACY_SHIELD &&
+                    sceneCompositor.hasBackgroundMedia()
+                val base = if (useMedia) {
+                    SceneCompositor.createNeutralBaseBitmap()
+                } else {
+                    SceneSlateRenderer.createSlateBitmap(
+                        width = outW,
+                        height = outH,
+                        scene = scene,
+                        headline = currentSettings.streamTitleHeadline,
+                        handle = currentSettings.tiktokUsername
+                    )
+                }
+                genericStream.changeVideoSource(BitmapSource(base))
             }
         }
     }
@@ -624,6 +683,7 @@ class DiStreamService : LifecycleService(), ConnectChecker {
             // halaman provider diblokir X-Frame-Options / CSP dan lapisan overlay tampil kosong.
             sceneCompositor.setProviderOverlay(settings.primaryOverlayUrl)
             sceneCompositor.setProviderOverlayVisible(settings.primaryOverlayVisible)
+            applyBackgroundMedia(settings)
 
             val composedRoot = sceneCompositor.widgetWebView().let { widgetView ->
                 sceneCompositor.loadWidgetHtml(buildCreatorCompositorHtml(settings))
@@ -644,6 +704,26 @@ class DiStreamService : LifecycleService(), ConnectChecker {
             }
             viewFilterRender = overlayFilter
             gl.addFilter(overlayFilter)
+        }
+    }
+
+    /**
+     * Memuat sumber media latar (gambar/video) ke kompositor.
+     * Setara "Image Source" / "Media Source" pada OBS. URI berasal dari pemilih file pengguna.
+     */
+    private fun applyBackgroundMedia(settings: StreamSettings) {
+        val uri = settings.backgroundMediaUri.trim()
+        if (uri.isBlank()) {
+            sceneCompositor.clearBackground()
+            return
+        }
+        val ok = if (settings.backgroundMediaIsVideo) {
+            sceneCompositor.setBackgroundVideo(uri, looping = true)
+        } else {
+            sceneCompositor.setBackgroundImage(uri, fitCenter = true)
+        }
+        if (!ok) {
+            logSystemEvent("Sumber media latar gagal dimuat (${uri.take(48)}…) — memakai slate bawaan")
         }
     }
 

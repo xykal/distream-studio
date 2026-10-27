@@ -73,7 +73,18 @@ function readJsonBody(req) {
 }
 
 function createDiStreamHttpHandler(options = {}) {
-  const webhookSecret = options.webhookSecret ?? process.env.DISTREAM_SECRET ?? "";
+  // Vercel (Hobby) menolak pembuatan env var baru pada akun ini ("fair use limit"),
+  // jadi bila DISTREAM_SECRET belum di-set, secret webhook diturunkan secara deterministik
+  // dari DISTREAM_LICENSE_SECRET (nilai privat, 64 karakter acak). Ini tetap rahasia dan
+  // tidak bisa ditebak dari APK. Begitu DISTREAM_SECRET tersedia, nilai itu yang dipakai.
+  const webhookSecret =
+    options.webhookSecret ??
+    process.env.DISTREAM_SECRET ??
+    (process.env.DISTREAM_LICENSE_SECRET
+      ? crypto.createHmac("sha256", process.env.DISTREAM_LICENSE_SECRET)
+          .update("distream-webhook-v1")
+          .digest("base64")
+      : "");
   const saas = options.saasEngine || new SaasBillingEngine(options);
   const rooms = options.rooms || new Map();
   const rateBuckets = new Map();

@@ -206,10 +206,13 @@ class DiStreamComprehensiveTest {
 
     @Test
     fun `ZXing ISO 18004 QR matrix generator encodes real scannable QRIS payload and Cloud URL normalizes`() {
+        // Assert terhadap konstanta, bukan literal: host backend bisa dipindah
+        // (Vercel -> Cloudflare Workers) tanpa membuat test rapuh.
         assertEquals(
-            "https://distream-studio-cloud.vercel.app",
+            SaasSubscriptionManager.PRODUCTION_CLOUD_URL,
             SaasSubscriptionManager.normalizeCloudUrl("http://localhost:21213")
         )
+        assertTrue(SaasSubscriptionManager.PRODUCTION_CLOUD_URL.startsWith("https://"))
         val matrix = SaasSubscriptionManager.encodeQrBitMatrix(
             "https://app.pakasir.com/pay-v2/gkiq8c8iq?qris_only=1",
             256

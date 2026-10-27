@@ -216,7 +216,7 @@ data class StreamSettings(
     val saasTier: SaasPlanTier = SaasPlanTier.FREE,
     val saasLicenseToken: String = "",
     val saasExpiresAtMillis: Long = 0L,
-    val saasBackendUrl: String = "https://distream-studio-cloud.vercel.app",
+    val saasBackendUrl: String = "https://distream-studio-cloud.dikanjut.workers.dev",
     val subscriberEmail: String = "",
     val simulcastEnabled: Boolean = false,
     val simulcastYoutubeKey: String = "",

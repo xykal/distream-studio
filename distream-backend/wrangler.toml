@@ -1,0 +1,16 @@
+# Deploy backend DiStream / Streaming In ke Cloudflare Workers
+# (dipakai sebagai cadangan saat akun Vercel diblokir)
+#
+#   npm run build:worker
+#   npx wrangler deploy --compatibility-date 2024-09-23 --compatibility-flags nodejs_compat
+#
+# Secret wajib (jangan disimpan di file ini):
+#   wrangler secret put DISTREAM_LICENSE_SECRET
+#   wrangler secret put DISTREAM_SECRET
+#   wrangler secret put PAKASIR_PROJECT
+#   wrangler secret put PAKASIR_API_KEY
+#   wrangler secret put RESEND_EMAIL_API_KEY
+name = "distream-studio-cloud"
+main = "dist/worker.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]

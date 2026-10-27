@@ -18,13 +18,32 @@ const crypto = require("crypto");
 const QRCode = require("qrcode");
 
 function loadDotEnv() {
-  const candidates = [
-    path.resolve(__dirname, ".env"),
-    path.resolve(__dirname, "..", ".env")
-  ];
+  // Di lingkungan tanpa filesystem (Cloudflare Workers) fungsi ini harus no-op:
+  // konfigurasi datang dari binding environment, bukan dari file .env.
+  if (typeof __dirname === "undefined" || typeof fs.existsSync !== "function") return;
+  let candidates;
+  try {
+    candidates = [
+      path.resolve(__dirname, ".env"),
+      path.resolve(__dirname, "..", ".env")
+    ];
+  } catch {
+    return;
+  }
   for (const filePath of candidates) {
-    if (!fs.existsSync(filePath)) continue;
-    const content = fs.readFileSync(filePath, "utf8");
+    let exists = false;
+    try {
+      exists = fs.existsSync(filePath);
+    } catch {
+      return;
+    }
+    if (!exists) continue;
+    let content;
+    try {
+      content = fs.readFileSync(filePath, "utf8");
+    } catch {
+      continue;
+    }
     for (const rawLine of content.split(/\r?\n/)) {
       const line = rawLine.trim();
       if (!line || line.startsWith("#")) continue;

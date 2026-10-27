@@ -90,7 +90,7 @@ jobs:
             -dname "CN=DiStream Studio, OU=Mobile Broadcast, O=XyVerse, L=Jakarta, ST=DKI, C=ID"
 
           mkdir -p release-artifacts
-          cp app/build/outputs/apk/debug/app-debug.apk release-artifacts/StreamingIn-v4.0.1-debug.apk
+          cp app/build/outputs/apk/debug/app-debug.apk release-artifacts/StreamingIn-v4.0.2-debug.apk
 
           "$BUILD_TOOLS_DIR/zipalign" -v -p 4 \
             app/build/outputs/apk/release/app-release-unsigned.apk \
@@ -101,17 +101,17 @@ jobs:
             --ks-key-alias distream_key \
             --ks-pass pass:distream2026 \
             --key-pass pass:distream2026 \
-            --out release-artifacts/StreamingIn-v4.0.1-release-signed.apk \
+            --out release-artifacts/StreamingIn-v4.0.2-release-signed.apk \
             release-artifacts/aligned-release.apk
 
-          "$BUILD_TOOLS_DIR/apksigner" verify --verbose release-artifacts/StreamingIn-v4.0.1-release-signed.apk
+          "$BUILD_TOOLS_DIR/apksigner" verify --verbose release-artifacts/StreamingIn-v4.0.2-release-signed.apk
           rm -f distream-ci-release.jks release-artifacts/aligned-release.apk
           ls -lh release-artifacts/
 
       - name: Upload Compiled APKs & QA Reports to GitHub Actions
         uses: actions/upload-artifact@v4
         with:
-          name: StreamingIn-v4.0.1-APKs-and-QA-Reports
+          name: StreamingIn-v4.0.2-APKs-and-QA-Reports
           path: |
             release-artifacts/*.apk
             app/build/reports/tests/testDebugUnitTest/

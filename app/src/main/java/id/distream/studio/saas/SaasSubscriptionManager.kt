@@ -54,7 +54,7 @@ data class DecodedLicenseResult(
  */
 object SaasSubscriptionManager {
 
-    const val PRODUCTION_CLOUD_URL = "https://distream-studio-cloud.vercel.app"
+    const val PRODUCTION_CLOUD_URL = "https://distream-studio-cloud.dikanjut.workers.dev"
     private const val DEFAULT_SIGNING_SECRET = "distream-studio-default-hmac-key-2026"
     private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
 

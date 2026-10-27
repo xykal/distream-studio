@@ -46,6 +46,26 @@
      `Camera2Source` dan scene IRL tidak pernah menjadi layar hitam.
    - Wajib diuji di perangkat fisik sebelum dijadikan default.
 
+## Backend Cloud (v4.0.2 — pindah ke Cloudflare Workers)
+
+Akun Vercel (`xykalnotkel's projects`) diblokir Vercel karena fair-use
+(`402 DEPLOYMENT_DISABLED`), sehingga domain `distream-studio-cloud.vercel.app` tidak melayani
+request apa pun. Backend dipindahkan ke Cloudflare Workers tanpa mengubah logika bisnis:
+
+- **Endpoint produksi baru:** `https://distream-studio-cloud.dikanjut.workers.dev`
+  (sudah menjadi default `saasBackendUrl` di aplikasi v4.0.2)
+- Sumber kode tetap SATU: `distream-backend/server.js` + `saasEngine.js`.
+  `worker-entry.js` hanya menjembatani Fetch API Workers ke handler gaya Node (req, res).
+- Deploy ulang:
+  ```bash
+  cd distream-backend
+  npm run build:worker          # esbuild -> dist/worker.js
+  npx wrangler deploy           # butuh CLOUDFLARE_API_TOKEN
+  ```
+- Batasan saat ini: **relay WebSocket chat/gift TikTok belum ada di Worker** (butuh Durable
+  Object). Semua endpoint HTTP berfungsi: health, katalog paket, checkout QRIS Pakasir,
+  verifikasi lisensi, dan webhook donasi.
+
 ## Struktur Proyek
 
 - `app/` — Aplikasi Android Native Kotlin (`compileSdk = 36`, `minSdk = 29`, `RootEncoder 2.8.1`, `CameraX`, `ZXing 3.5.3`, Custom Studio UI).

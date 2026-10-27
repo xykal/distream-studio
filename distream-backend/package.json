@@ -5,11 +5,17 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test test/saas_and_server.test.js"
+    "test": "node --test test/saas_and_server.test.js",
+    "build:worker": "esbuild worker-entry.js --bundle --format=esm --platform=node --target=node20 --external:ws --external:tiktok-live-connector --banner:js=\"$(cat worker-banner.js)\" --outfile=dist/worker.js",
+    "deploy:worker": "npm run build:worker && wrangler deploy"
   },
   "dependencies": {
     "qrcode": "^1.5.4",
     "tiktok-live-connector": "^2.5.0",
     "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "wrangler": "^3.99.0"
   }
 }

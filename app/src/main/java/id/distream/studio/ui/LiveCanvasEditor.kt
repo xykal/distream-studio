@@ -1072,7 +1072,6 @@ private fun SceneBackdropBox(
     }
 }
 
-@Composable
 /** Magic snap: elemen "nempel" ke tepi kiri, tengah, atau kanan kanvas. Setara snap di OBS. */
 private fun snapAxis(value: Float, anchors: FloatArray, tolerance: Float = 1.6f): Float {
     anchors.forEach { a -> if (abs(value - a) <= tolerance) return a }
@@ -1082,6 +1081,7 @@ private fun snapAxis(value: Float, anchors: FloatArray, tolerance: Float = 1.6f)
 private val SNAP_X = floatArrayOf(2f, 50f, 84f)
 private val SNAP_Y = floatArrayOf(2f, 50f, 92f)
 
+@Composable
 private fun DraggableCanvasNode(
     nodeId: String,
     selectedId: String,

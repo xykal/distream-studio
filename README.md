@@ -99,9 +99,22 @@ Cloud API sekarang melayani satu halaman overlay siap pakai sebagai **Browser So
 https://distream-studio-cloud.dikanjut.workers.dev/overlay?room=NAMA_ROOM
 ```
 
-Parameter opsional: `accent` (hex, tanpa `#`), `goal` (target donasi), `goalTitle`, `ticker`,
-`pos=top|bottom`, `conn=1` (indikator koneksi), `speed` (detik ticker), `demo=1` (pratinjau
-tanpa siaran, event contoh).
+Parameter opsional:
+
+| Param | Fungsi |
+|---|---|
+| `accent=FF5A2C` | warna tema (hex, boleh tanpa `#`) |
+| `theme=neon\|sunset\|mint\|gold\|pink\|mono` | preset warna, dipakai bila `accent` kosong |
+| `goal=500000` + `goalTitle=Target` | goal bar bertarget (nominal donasi dijumlah otomatis) |
+| `only=alert\|goal\|top\|recent\|ticker` | tampilkan **satu widget saja** — bisa ditumpuk di atas overlay provider lain |
+| `gif=https://.../anim.gif` | aset animasi milik streamer sendiri di kartu alert (hanya http/https) |
+| `ticker=...` + `speed=18` | running text, `speed` = detik per putaran |
+| `pos=top\|bottom` | posisi alert (atas/bawah) |
+| `conn=1` | indikator status koneksi relay (berguna saat setup) |
+| `demo=1` | pratinjau tanpa siaran, event contoh tiap 7 detik |
+
+Widget yang tersedia: **alert donasi**, **goal bar**, **leaderboard top donatur** (akumulasi per
+nama), **daftar donatur terbaru**, dan **running text**.
 
 Cara pakai:
 1. Di OBS/TikTok Live Studio tambahkan **Browser Source** → tempel URL di atas.

@@ -48,7 +48,32 @@
     display: grid; place-items: center;
     font-size: 21px;
     background: linear-gradient(160deg, var(--accent), rgba(255,255,255,0.12));
+    background-size: cover; background-position: center;
   }
+  .alert .badge.has-gif { font-size: 0; border: 1px solid var(--stroke); }
+
+  /* ---------- Leaderboard (top donatur) ---------- */
+  .board {
+    position: absolute; left: 4%; top: __RECENT_TOP__;
+    width: 240px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .board .head {
+    font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+    color: rgba(255,255,255,.55); padding-left: 4px;
+  }
+  .board .row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; border-radius: 10px;
+    background: var(--card); border: 1px solid var(--stroke);
+    color: var(--ink); font-size: 12px;
+    transition: transform .3s ease, border-color .3s ease;
+  }
+  .board .row.top { border-color: var(--accent); }
+  .board .rank { font-weight: 800; color: var(--accent); width: 14px; font-variant-numeric: tabular-nums; }
+  .board .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(255,255,255,.82); }
+  .board .val { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  .hidden { display: none !important; }
   .alert .who { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,.62); }
   .alert .amt { font-size: 25px; font-weight: 800; line-height: 1.1; color: var(--accent); }
   .alert .msg { font-size: 14.5px; color: rgba(255,255,255,.9); margin-top: 2px; word-break: break-word; }
@@ -117,6 +142,10 @@
 <div class="stage">
   <div class="conn" id="conn"><i></i><span id="connLabel">menyambung…</span></div>
   <div class="alerts" id="alerts"></div>
+  <div class="board hidden" id="board">
+    <div class="head">Top Donatur</div>
+    <div id="boardRows"></div>
+  </div>
   <div class="recent" id="recent"></div>
   <div class="goal" id="goal" style="display:none">
     <div class="goal-row">
@@ -143,6 +172,21 @@
   var demo = params.get("demo") === "1";
   var showConn = params.get("conn") === "1";
 
+  // Aset animasi milik streamer sendiri (mis. GIF dari folder lokal/CDN mereka).
+  // Hanya http/https yang diterima, jadi tidak bisa dipakai menyisipkan javascript: URL.
+  var gifUrl = "";
+  try {
+    var rawGif = params.get("gif");
+    if (rawGif) {
+      var parsedGif = new URL(rawGif);
+      if (parsedGif.protocol === "https:" || parsedGif.protocol === "http:") gifUrl = parsedGif.href;
+    }
+  } catch (e) { gifUrl = ""; }
+
+  // "only=" membuat satu widget saja tampil, supaya bisa ditumpuk di atas overlay provider
+  // lain (mis. alert tetap dari Saweria, goal bar dari DiStream).
+  var only = (params.get("only") || "all").toLowerCase();
+
   document.documentElement.style.setProperty("--accent", accent);
   document.getElementById("conn").style.opacity = showConn ? "1" : "0";
 
@@ -154,6 +198,34 @@
   if (tickerText) {
     document.getElementById("ticker").style.display = "block";
     document.getElementById("tickerText").textContent = tickerText;
+  }
+
+  if (only !== "all") {
+    document.getElementById("alerts").classList.add("hidden");
+    document.getElementById("goal").classList.add("hidden");
+    document.getElementById("recent").classList.add("hidden");
+    document.getElementById("ticker").classList.add("hidden");
+    document.getElementById("board").classList.add("hidden");
+    if (only === "alert" || only === "alerts") {
+      document.getElementById("alerts").classList.remove("hidden");
+    } else if (only === "goal") {
+      if (goalTarget <= 0) {
+        // tanpa target, goal bar tetap ditampilkan supaya ukurannya bisa diatur di OBS
+        document.getElementById("goal").style.display = "block";
+        document.getElementById("goalTitle").textContent = goalTitle;
+      }
+      document.getElementById("goal").classList.remove("hidden");
+    } else if (only === "top" || only === "leaderboard") {
+      document.getElementById("board").classList.remove("hidden");
+    } else if (only === "recent") {
+      document.getElementById("recent").classList.remove("hidden");
+    } else if (only === "ticker") {
+      document.getElementById("ticker").style.display = "block";
+      document.getElementById("ticker").classList.remove("hidden");
+    }
+  } else {
+    // tampilan gabungan: leaderboard ikut tampil bila ada donasi
+    document.getElementById("board").classList.remove("hidden");
   }
 
   var total = 0;
@@ -170,6 +242,39 @@
     document.getElementById("goalFill").style.width = pct.toFixed(1) + "%";
     document.getElementById("goalValue").textContent =
       rupiah(current) + " / " + rupiah(goalTarget);
+  }
+
+  var totals = {};
+  var boardTimer = null;
+
+  function pushLeaderboard(name, amount) {
+    var key = String(name || "Supporter");
+    totals[key] = (totals[key] || 0) + Number(amount || 0);
+    // batasi jumlah entri agar tetap ringan untuk siaran berjam-jam
+    var entries = Object.keys(totals).map(function (k) { return [k, totals[k]]; });
+    entries.sort(function (a, b) { return b[1] - a[1]; });
+    var box = document.getElementById("boardRows");
+    box.innerHTML = "";
+    entries.slice(0, 5).forEach(function (e, i) {
+      var row = document.createElement("div");
+      row.className = "row" + (i === 0 ? " top" : "");
+      var rank = document.createElement("span");
+      rank.className = "rank";
+      rank.textContent = String(i + 1);
+      var nm = document.createElement("span");
+      nm.className = "nm";
+      nm.textContent = e[0];
+      var val = document.createElement("span");
+      val.className = "val";
+      val.textContent = rupiah(e[1]);
+      row.appendChild(rank);
+      row.appendChild(nm);
+      row.appendChild(val);
+      box.appendChild(row);
+    });
+    if (document.getElementById("board").classList.contains("hidden") && only === "all" && entries.length > 0) {
+      document.getElementById("board").classList.remove("hidden");
+    }
   }
 
   function pushRecent(name, amount) {
@@ -201,7 +306,12 @@
 
     var badge = document.createElement("div");
     badge.className = "badge";
-    badge.textContent = "💸";
+    if (gifUrl) {
+      badge.classList.add("has-gif");
+      badge.style.backgroundImage = 'url("' + gifUrl.replace(/"/g, "%22") + '")';
+    } else {
+      badge.textContent = "💸";
+    }
 
     var body = document.createElement("div");
     var who = document.createElement("div");
@@ -245,6 +355,7 @@
     }, hold);
 
     pushRecent(payload.nickname || "Supporter", payload.amount || 0);
+    pushLeaderboard(payload.nickname || "Supporter", payload.amount || 0);
     total += Number(payload.amount || 0);
     renderGoal(total);
   }

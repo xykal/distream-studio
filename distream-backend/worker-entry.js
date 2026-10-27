@@ -168,7 +168,17 @@ function buildOverlayPage(url) {
     .replace(/^@/, "")
     .trim()
     .slice(0, 64) || "default";
-  const accentRaw = (q.get("accent") || "#22D3EE").trim();
+  // Preset tema supaya streamer tidak perlu hafal kode hex.
+  const THEMES = {
+    neon: "#22D3EE",
+    sunset: "#FF5A2C",
+    mint: "#34D399",
+    gold: "#FBBF24",
+    pink: "#FB7185",
+    mono: "#E5E7EB"
+  };
+  const theme = (q.get("theme") || "").toLowerCase();
+  const accentRaw = (q.get("accent") || THEMES[theme] || THEMES.neon).trim();
   const accent = /^#?[0-9a-fA-F]{3,8}$/.test(accentRaw)
     ? (accentRaw.startsWith("#") ? accentRaw : `#${accentRaw}`)
     : "#22D3EE";
